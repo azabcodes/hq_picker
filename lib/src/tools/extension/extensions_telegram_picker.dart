@@ -11,7 +11,7 @@ List<String> allowedExtensions = [
   // Compressed files
   '.zip', '.rar', '.7z', '.tar', '.gz',
 
-  "wbs",
+  'wbs',
 
   // Design and engineering files
   '.dwg', '.dxf', '.dwf', // AutoCAD

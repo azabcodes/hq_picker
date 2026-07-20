@@ -8,8 +8,7 @@ class HQPickerCameraPreviewWidget extends StatefulWidget {
   const HQPickerCameraPreviewWidget({super.key, required this.pickImageCamera});
 
   @override
-  State<HQPickerCameraPreviewWidget> createState() =>
-      _CameraPreviewWidgetState();
+  State<HQPickerCameraPreviewWidget> createState() => _CameraPreviewWidgetState();
 }
 
 class _CameraPreviewWidgetState extends State<HQPickerCameraPreviewWidget> {

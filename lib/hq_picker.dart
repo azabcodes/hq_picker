@@ -7,24 +7,37 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/bottom_sheet.dart';
 import 'package:hq_picker/src/bottom_sheet_image_selector.dart';
 import 'package:hq_picker/src/custom_picker.dart';
 import 'package:hq_picker/src/scaffold_bottom_sheet.dart';
+import 'package:hq_picker/src/tools/media_editor.dart';
 import 'package:hq_picker/src/tools/media_services.dart';
 import 'package:hq_picker/src/widget/global/camera_image_setting.dart';
-import 'package:flutter_saver/flutter_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'src/config/hq_picker_config.dart';
+import 'src/config/hq_picker_result.dart';
+import 'src/bloc/hq_picker_bloc.dart';
+import 'src/bloc/hq_picker_event.dart';
+import 'src/bloc/hq_picker_state.dart';
 
 export 'package:hq_picker/src/custom_picker.dart';
+export 'package:hq_picker/src/file_picker_service.dart';
 export 'package:hq_picker/src/telegram_media_picker.dart';
 export 'package:hq_picker/src/tools/media_services.dart';
 export 'package:hq_picker/src/widget/global/camera_image_setting.dart';
 export 'package:photo_manager/photo_manager.dart';
 export 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
-export 'package:hq_picker/src/file_picker_service.dart';
+
+export 'src/config/hq_picker_config.dart';
+export 'src/config/hq_picker_localizations.dart';
+export 'src/config/hq_picker_result.dart';
+export 'src/config/hq_picker_theme.dart';
 
 /// A stateful widget that allows users to pick media files (images, videos, audio, files) from their device.
 ///
@@ -52,6 +65,45 @@ export 'package:hq_picker/src/file_picker_service.dart';
 ///
 
 class HQPicker extends StatefulWidget {
+  static Future<List<HQPickerResult>> _processAssets(
+    BuildContext context,
+    List<AssetEntity> assets,
+    HQPickerConfig config,
+  ) async {
+    if (!config.enableCropping && !config.compressImage) {
+      return assets.map((a) => HQPickerResult(asset: a)).toList();
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    List<HQPickerResult> finalResult = [];
+    for (var asset in assets) {
+      if (asset.type == AssetType.image) {
+        File? file = await asset.file;
+        if (file != null) {
+          if (!context.mounted) return finalResult;
+          File? processed = await HQPickerMediaEditor.processImage(
+            context,
+            file,
+            config,
+          );
+          finalResult.add(HQPickerResult(asset: asset, file: processed));
+        } else {
+          finalResult.add(HQPickerResult(asset: asset));
+        }
+      } else {
+        finalResult.add(HQPickerResult(asset: asset));
+      }
+    }
+
+    if (context.mounted) Navigator.pop(context);
+    return finalResult;
+  }
+
   /// The maximum number of media files that can be picked.
   final int maxCount;
 
@@ -109,12 +161,16 @@ class HQPicker extends StatefulWidget {
   /// The title of the widget.
   final Widget title;
 
+  /// The configuration for the picker.
+  final HQPickerConfig config;
+
   /// Constructs a new [HQPicker] instance with the given properties.
   ///
   /// The [maxCount] and [requestType] properties are required.
   const HQPicker({
     required this.maxCount,
     required this.requestType,
+    this.config = const HQPickerConfig(),
     this.confirmText = 'Send',
     this.confirmTextColor = Colors.white,
     this.textColor = Colors.white,
@@ -138,10 +194,11 @@ class HQPicker extends StatefulWidget {
     super.key,
   });
 
-  static Future<List<AssetEntity>> customPicker({
+  static Future<List<HQPickerResult>> customPicker({
     required BuildContext context,
     required int maxCount,
     required HQPickerRequestType requestType,
+    HQPickerConfig config = const HQPickerConfig(),
     final Key? key,
     bool showOnlyVideo = true,
     bool showOnlyImage = true,
@@ -186,18 +243,20 @@ class HQPicker extends StatefulWidget {
       ),
     );
     if (result != null && result.isNotEmpty) {
-      return result;
+      if (!context.mounted) return [];
+      return await _processAssets(context, result, config);
     }
     return [];
   }
 
-  static Future<List<AssetEntity>> bottomSheets({
+  static Future<List<HQPickerResult>> bottomSheets({
     required BuildContext context,
     required final int maxCount,
     required final HQPickerRequestType requestType,
+    HQPickerConfig config = const HQPickerConfig(),
     final Key? key,
-    final String confirmText = "Send",
-    final String textEmptyList = "No albums found.",
+    final String confirmText = 'Send',
+    final String textEmptyList = 'No albums found.',
     final Color? confirmButtonColor,
     final Color confirmTextColor = Colors.black,
     final Color? backgroundColor,
@@ -234,18 +293,19 @@ class HQPicker extends StatefulWidget {
     );
 
     if (result != null && result.isNotEmpty) {
-      return result;
+      if (!context.mounted) return [];
+      return await _processAssets(context, result, config);
     }
-
     return [];
   }
 
-  static Future<List<AssetEntity>> scaffoldBottomSheet({
+  static Future<List<HQPickerResult>> scaffoldBottomSheet({
     required BuildContext context,
     required int maxCount,
     required HQPickerRequestType requestType,
-    String confirmText = "Send",
-    String textEmptyList = "No albums found.",
+    HQPickerConfig config = const HQPickerConfig(),
+    String confirmText = 'Send',
+    String textEmptyList = 'No albums found.',
     Color? confirmButtonColor,
     Color confirmTextColor = Colors.black,
     Color? backgroundColor,
@@ -273,18 +333,19 @@ class HQPicker extends StatefulWidget {
     );
 
     if (result != null && result.isNotEmpty) {
-      return result;
+      if (!context.mounted) return [];
+      return await _processAssets(context, result, config);
     }
-
     return [];
   }
 
-  static Future<List<AssetEntity>> bottomSheetImageSelector({
+  static Future<List<HQPickerResult>> bottomSheetImageSelector({
     required BuildContext context,
     required int maxCount,
     required HQPickerRequestType requestType,
-    String confirmText = "Send",
-    String textEmptyList = "No albums found.",
+    HQPickerConfig config = const HQPickerConfig(),
+    String confirmText = 'Send',
+    String textEmptyList = 'No albums found.',
     Color? confirmButtonColor,
     Color confirmTextColor = Colors.black,
     final Color? backgroundColor,
@@ -323,16 +384,16 @@ class HQPicker extends StatefulWidget {
     );
 
     if (result != null && result.isNotEmpty) {
-      return result;
+      if (!context.mounted) return [];
+      return await _processAssets(context, result, config);
     }
-
     return [];
   }
 
   @override
   State<HQPicker> createState() => _HQPickerState();
 
-  Future<List<AssetEntity>> instagram(BuildContext context) async {
+  Future<List<HQPickerResult>> instagram(BuildContext context) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -355,325 +416,300 @@ class HQPicker extends StatefulWidget {
       ),
     );
     if (result != null && result.isNotEmpty) {
-      return result;
+      if (!context.mounted) return [];
+      return await _processAssets(context, result, config);
     }
     return [];
   }
 }
 
-class _HQPickerState extends State<HQPicker>
-    with AutomaticKeepAliveClientMixin {
-  AssetEntity? selectedEntity;
-  AssetPathEntity? selectedAlbum;
-  List<AssetPathEntity> albumList = [];
-  List<AssetEntity> assetsList = [];
-  List<AssetEntity> selectedAssetList = [];
-  bool isMultiple = false;
-  bool isLoding = true;
-
-  File? image;
+class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin {
+  late final HQPickerBloc _bloc;
 
   @override
   void initState() {
     super.initState();
-    _startLoading();
-    _loadAlbum();
+    _bloc = HQPickerBloc()
+      ..add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
   }
 
   @override
   void didUpdateWidget(covariant HQPicker oldWidget) {
-    _startLoading();
-    _loadAlbum();
+    if (oldWidget.requestType != widget.requestType) {
+      _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
+    }
     super.didUpdateWidget(oldWidget);
   }
 
   @override
-  void didChangeDependencies() {
-    _startLoading();
-    _loadAlbum();
-    super.didChangeDependencies();
+  void dispose() {
+    _bloc.close();
+    super.dispose();
   }
 
-  Future<void> _loadAlbum() async {
+  Future<void> pickImage(ImageSource source) async {
     try {
-      final albums = await _fetchAlbums();
-      await _updateAlbums(albums);
-      if (albums.isNotEmpty) {
-        await _loadAssetsForSelectedAlbum();
+      final pickedImageFile = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: widget.cameraImageSettings?.imageQuality,
+        preferredCameraDevice:
+            widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
+        maxWidth: widget.cameraImageSettings?.maxWidth,
+        maxHeight: widget.cameraImageSettings?.maxHeight,
+      );
+
+      if (pickedImageFile != null) {
+        final imageFile = File(pickedImageFile.path);
+        _bloc.add(SetCapturedImageEvent(imageFile));
+
+        bool isSaved = await FlutterSaver.saveImageAndroid(fileImage: imageFile);
+        debugPrint('Image saved: $isSaved');
+
+        if (isSaved) {
+          _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
+        } else {
+          debugPrint('Error: Image was not saved.');
+        }
+      } else {
+        debugPrint('Image selection cancelled.');
       }
+    } on PlatformException catch (error) {
+      debugPrint('PlatformException: $error');
     } catch (error) {
-      _handleError(error);
+      debugPrint('Error picking image: $error');
     }
-  }
-
-  Future<List<AssetPathEntity>> _fetchAlbums() async {
-    return await HQPickerMediaServices.loadAlbums(widget.requestType);
-  }
-
-  Future<void> _updateAlbums(List<AssetPathEntity> albums) async {
-    setState(() {
-      albumList = albums;
-      if (albums.isNotEmpty) {
-        selectedAlbum = albums[0];
-      }
-    });
-  }
-
-  Future<void> _loadAssetsForSelectedAlbum() async {
-    if (selectedAlbum != null) {
-      final assets = await HQPickerMediaServices.loadAssets(selectedAlbum!);
-      _updateAssets(assets);
-    }
-  }
-
-  void _updateAssets(List<AssetEntity> assets) {
-    setState(() {
-      assetsList = assets;
-      if (assets.isNotEmpty) {
-        selectedEntity = assets[0];
-      }
-    });
-  }
-
-  void _handleError(dynamic error) {
-    debugPrint('Error loading albums: $error');
-  }
-
-  void _startLoading() {
-    setState(() {
-      isLoding = true;
-    });
-    Future.delayed(const Duration(seconds: 10), () {
-      if (mounted) {
-        setState(() {
-          isLoding = false;
-        });
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     Size size = MediaQuery.of(context).size;
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: widget.backgroundColor,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: widget.appbarColor,
-          leading: const BackButton(color: Colors.white),
-          centerTitle: true,
-          title: widget.title,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 15.0),
-              child: InkResponse(
-                child: Text(
-                  widget.confirmText,
-                  style: TextStyle(color: widget.confirmTextColor),
-                ),
-                onTap: () {
-                  if (selectedAssetList.isEmpty && selectedEntity != null) {
-                    selectedAssetList = [selectedEntity!];
-                  }
-
-                  if (selectedAssetList.isNotEmpty) {
-                    Navigator.pop(context, selectedAssetList);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color.fromARGB(255, 39, 36, 36),
-                        margin: const EdgeInsets.all(15.0),
-                        behavior: SnackBarBehavior.floating,
-                        shape: BeveledRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        content: const Text("No image selected"),
+    return BlocProvider.value(
+      value: _bloc,
+      child: SafeArea(
+        child: Scaffold(
+          backgroundColor: widget.backgroundColor,
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: widget.appbarColor,
+            leading: const BackButton(color: Colors.white),
+            centerTitle: true,
+            title: widget.title,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 15.0),
+                child: BlocBuilder<HQPickerBloc, HQPickerState>(
+                  builder: (context, state) {
+                    return InkResponse(
+                      child: Text(
+                        widget.confirmText,
+                        style: TextStyle(color: widget.confirmTextColor),
                       ),
+                      onTap: () {
+                        List<AssetEntity> finalSelection = [];
+                        if (state.selectedAssetList.isEmpty && state.selectedEntity != null) {
+                          finalSelection = [state.selectedEntity!];
+                        } else {
+                          finalSelection = List.from(state.selectedAssetList);
+                        }
+
+                        if (finalSelection.isNotEmpty) {
+                          Navigator.pop(context, finalSelection);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color.fromARGB(255, 39, 36, 36),
+                              margin: const EdgeInsets.all(15.0),
+                              behavior: SnackBarBehavior.floating,
+                              shape: BeveledRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              content: const Text('No image selected'),
+                            ),
+                          );
+                        }
+                      },
                     );
-                  }
-                },
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            SizedBox(
-              height: size.height * 0.40,
-              child: image != null
-                  ? Image.file(
-                      fit: BoxFit.cover,
-                      height: size.height,
-                      width: size.width,
-                      File(image!.path),
-                    )
-                  : (selectedEntity == null)
-                  ? const SizedBox.shrink()
-                  : Stack(
-                      children: [
-                        Positioned.fill(
-                          child: AssetEntityImage(
-                            selectedEntity!,
-                            isOriginal: false,
-                            thumbnailSize: const ThumbnailSize.square(250),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(
-                                child: Icon(Icons.error, color: Colors.red),
-                              );
-                            },
-                          ),
-                        ),
-                        if (selectedEntity!.type == AssetType.video)
-                          const Positioned.fill(
-                            child: Center(
-                              child: Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 50.0,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-            ),
-            Flexible(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
+            ],
+          ),
+          body: BlocBuilder<HQPickerBloc, HQPickerState>(
+            builder: (context, state) {
+              return Column(
                 children: [
-                  DecoratedBox(
-                    decoration: const BoxDecoration(color: Color(0xFF212332)),
-                    child: Row(
-                      children: [
-                        if (selectedAlbum != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 15.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                album(size.height, context);
-                              },
-                              child: Row(
-                                children: [
-                                  Text(
-                                    selectedAlbum!.name == "Recent"
-                                        ? "Gallery"
-                                        : selectedAlbum!.name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 20.0,
-                                      color: widget.textSelectedListAssetColor,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 5.0),
-                                    child: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: widget.iconSelectedListAlbumColor,
-                                    ),
-                                  ),
-                                ],
+                  SizedBox(
+                    height: size.height * 0.40,
+                    child: state.capturedImage != null
+                        ? Image.file(
+                            fit: BoxFit.cover,
+                            height: size.height,
+                            width: size.width,
+                            state.capturedImage!,
+                          )
+                        : (state.selectedEntity == null)
+                        ? const SizedBox.shrink()
+                        : Stack(
+                            children: [
+                              Positioned.fill(
+                                child: AssetEntityImage(
+                                  state.selectedEntity!,
+                                  isOriginal: false,
+                                  thumbnailSize: const ThumbnailSize.square(250),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Icon(Icons.error, color: Colors.red),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
+                              if (state.selectedEntity!.type == AssetType.video)
+                                const Positioned.fill(
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.play_arrow,
+                                      color: Colors.white,
+                                      size: 50.0,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
-                              isMultiple = isMultiple == true ? false : true;
-                              selectedAssetList = [];
-                            });
-                          },
-                          icon: Icon(
-                            isMultiple == true
-                                ? Icons.add_a_photo_outlined
-                                : Icons.add_a_photo,
-                            color: widget.iconGalleryColor,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () async {
-                            await pickImage(ImageSource.camera);
-                          },
-                          icon: Icon(
-                            Icons.camera,
-                            color: widget.iconCameraColor,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   Flexible(
-                    child: assetsList.isEmpty
-                        ? Center(
-                            child: isLoding
-                                ? widget.loading ??
-                                      const CircularProgressIndicator.adaptive()
-                                : Text(
-                                    widget.textEmptyList,
-                                    style: TextStyle(
-                                      color: widget.nullColorText,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        DecoratedBox(
+                          decoration: const BoxDecoration(color: Color(0xFF212332)),
+                          child: Row(
+                            children: [
+                              if (state.selectedAlbum != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 15.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      _showAlbumSelector(context, state);
+                                    },
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          state.selectedAlbum!.name == 'Recent'
+                                              ? 'Gallery'
+                                              : state.selectedAlbum!.name,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 20.0,
+                                            color: widget.textSelectedListAssetColor,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5.0),
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: widget.iconSelectedListAlbumColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                          )
-                        : GridView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 4,
-                                  mainAxisSpacing: 1,
-                                  crossAxisSpacing: 1,
                                 ),
-                            itemCount: assetsList.length,
-                            itemBuilder: (context, index) {
-                              if (index < assetsList.length) {
-                                AssetEntity assetEntity = assetsList[index];
-                                return assetWidget(assetEntity);
-                              } else {
-                                return Container(); // Return an empty container if the index is out of bounds.
-                              }
-                            },
+                              const Spacer(),
+                              IconButton(
+                                onPressed: () {
+                                  _bloc.add(ToggleMultipleSelectionEvent());
+                                },
+                                icon: Icon(
+                                  state.isMultiple ? Icons.add_a_photo_outlined : Icons.add_a_photo,
+                                  color: widget.iconGalleryColor,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () async {
+                                  await pickImage(ImageSource.camera);
+                                },
+                                icon: Icon(
+                                  Icons.camera,
+                                  color: widget.iconCameraColor,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        Flexible(
+                          child: state.assetsList.isEmpty
+                              ? Center(
+                                  child: state.status == HQPickerStatus.loading
+                                      ? widget.loading ?? const CircularProgressIndicator.adaptive()
+                                      : Text(
+                                          widget.textEmptyList,
+                                          style: TextStyle(
+                                            color: widget.nullColorText,
+                                          ),
+                                        ),
+                                )
+                              : NotificationListener<ScrollNotification>(
+                                  onNotification: (ScrollNotification scrollInfo) {
+                                    if (scrollInfo.metrics.pixels >=
+                                        scrollInfo.metrics.maxScrollExtent - 200) {
+                                      _bloc.add(LoadMoreAssetsEvent());
+                                    }
+                                    return false;
+                                  },
+                                  child: GridView.builder(
+                                    physics: const BouncingScrollPhysics(),
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 4,
+                                      mainAxisSpacing: 1,
+                                      crossAxisSpacing: 1,
+                                    ),
+                                    itemCount:
+                                        state.assetsList.length + (state.isLoadingMore ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index < state.assetsList.length) {
+                                        AssetEntity assetEntity = state.assetsList[index];
+                                        return assetWidget(assetEntity, state);
+                                      } else {
+                                        return const Center(
+                                          child: CircularProgressIndicator.adaptive(),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  void album(double height, BuildContext contContext) {
+  void _showAlbumSelector(BuildContext context, HQPickerState state) {
     showModalBottomSheet(
       backgroundColor: const Color.fromARGB(255, 39, 36, 36),
-      context: contContext,
+      context: context,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-      builder: (context) {
+      builder: (_) {
         return ListView.builder(
           physics: const BouncingScrollPhysics(),
-          itemCount: albumList.length,
+          itemCount: state.albumList.length,
           itemBuilder: (context, index) {
+            final album = state.albumList[index];
             return ListTile(
               onTap: () {
-                setState(() {
-                  selectedAlbum = albumList[index];
-                  HQPickerMediaServices.loadAssets(selectedAlbum!).then((
-                    value,
-                  ) {
-                    setState(() {
-                      assetsList = value;
-                      selectedEntity = assetsList[0];
-                    });
-                  });
-                });
+                _bloc.add(ChangeAlbumEvent(album));
                 Navigator.pop(context);
               },
               title: Text(
-                albumList[index].name == "Recent"
-                    ? "Gallery"
-                    : albumList[index].name,
+                album.name == 'Recent' ? 'Gallery' : album.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -687,15 +723,14 @@ class _HQPickerState extends State<HQPicker>
     );
   }
 
-  Widget assetWidget(AssetEntity assetEntity) {
+  Widget assetWidget(AssetEntity assetEntity, HQPickerState state) {
+    final isSelected = state.selectedAssetList.contains(assetEntity);
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedEntity = assetEntity;
-          if (!isMultiple) {
-            selectedAssetList = [assetEntity];
-          }
-        });
+        _bloc.add(SelectEntityEvent(assetEntity));
+        if (!state.isMultiple) {
+          _bloc.add(SetSelectedAssetsEvent([assetEntity]));
+        }
       },
       child: Stack(
         children: [
@@ -724,16 +759,14 @@ class _HQPickerState extends State<HQPicker>
             ),
           Positioned.fill(
             child: Container(
-              color: assetEntity == selectedEntity
-                  ? Colors.white60
-                  : Colors.transparent,
+              color: assetEntity == state.selectedEntity ? Colors.white60 : Colors.transparent,
             ),
           ),
-          if (isMultiple == true)
+          if (state.isMultiple)
             Positioned.fill(
               child: GestureDetector(
                 onTap: () {
-                  selectedAsset(assetEntity: assetEntity);
+                  _bloc.add(ToggleAssetSelectionEvent(assetEntity, widget.maxCount));
                 },
                 child: Align(
                   alignment: Alignment.topRight,
@@ -741,21 +774,16 @@ class _HQPickerState extends State<HQPicker>
                     padding: const EdgeInsets.all(5.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: selectedAssetList.contains(assetEntity) == true
-                            ? Colors.blue
-                            : Colors.white12,
+                        color: isSelected ? Colors.blue : Colors.white12,
                         shape: BoxShape.circle,
                         border: Border.all(width: 1.5, color: Colors.white),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Text(
-                          "${selectedAssetList.indexOf(assetEntity) + 1}",
+                          isSelected ? '${state.selectedAssetList.indexOf(assetEntity) + 1}' : '',
                           style: TextStyle(
-                            color:
-                                selectedAssetList.contains(assetEntity) == true
-                                ? Colors.white
-                                : Colors.transparent,
+                            color: isSelected ? Colors.white : Colors.transparent,
                           ),
                         ),
                       ),
@@ -767,54 +795,6 @@ class _HQPickerState extends State<HQPicker>
         ],
       ),
     );
-  }
-
-  void selectedAsset({required AssetEntity assetEntity}) {
-    if (selectedAssetList.contains(assetEntity)) {
-      setState(() {
-        selectedAssetList.remove(assetEntity);
-      });
-    } else if (selectedAssetList.length < widget.maxCount) {
-      setState(() {
-        selectedAssetList.add(assetEntity);
-      });
-    }
-  }
-
-  Future<void> pickImage(ImageSource source) async {
-    try {
-      final pickedImageFile = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: widget.cameraImageSettings?.imageQuality,
-        preferredCameraDevice:
-            widget.cameraImageSettings!.preferredCameraDevice,
-        maxWidth: widget.cameraImageSettings!.maxWidth,
-        maxHeight: widget.cameraImageSettings!.maxHeight,
-      );
-
-      if (pickedImageFile != null) {
-        final imageFile = File(pickedImageFile.path);
-
-        setState(() async {
-          image = imageFile;
-
-          bool isSaved = await FlutterSaver.saveImageAndroid(fileImage: image);
-          debugPrint("Image saved: $isSaved");
-
-          if (isSaved) {
-            _loadAlbum();
-          } else {
-            debugPrint('Error: Image was not saved.');
-          }
-        });
-      } else {
-        debugPrint('Image selection cancelled.');
-      }
-    } on PlatformException catch (error) {
-      debugPrint('PlatformException: $error');
-    } catch (error) {
-      debugPrint('Error picking image: $error');
-    }
   }
 
   @override

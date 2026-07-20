@@ -1,289 +1,158 @@
 # HQPicker
 
-This is a multi-picker package that includes several different modes, making it easy to use.
+A high-performance, fully customizable, and multi-mode media picker for Flutter, entirely powered by the **BLoC pattern**. HQPicker ensures 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
 
-## Features
+## ✨ Features
 
-- Easy integration.
-- Customizable components.
-- Performance optimized.
-- Extensive documentation.
-- Picker Ui Instagram.
-- This is a multi-picker.
+- **BLoC Architecture**: Zero `setState` inside the core picker! Optimized for fast rebuilds and scalability.
+- **Pagination Built-in**: Lazy-loads images/videos in chunks of 60 to prevent memory leaks and freezing.
+- **Multiple UI Modes**:
+  - 📸 **Instagram Style**: Full-page preview with grid selection.
+  - 💬 **Telegram Style**: Dragable bottom sheet with tabs for Media, Audio, and Files.
+  - 📑 **Custom Picker / Scaffold Bottom Sheet**: Highly customizable simple pickers.
+- **File System Support**: Natively fetches and filters Audio (`.mp3`, `.wav`, etc.) and general Files from the device.
+- **Cropping & Compression**: Built-in support for editing images before returning them.
+- **Localization**: Supports multiple languages (English, Arabic, etc.) via Dependency Injection.
 
-## Getting started
+---
 
+## 🚀 Getting Started
+
+You can install the package directly from your terminal:
+```bash
+flutter pub add hq_picker
+```
+
+Or add it manually to your `pubspec.yaml`:
 ```yaml
+dependencies:
+  hq_picker: ^1.0.0
+```
+
+Import it in your Dart code:
+```dart
 import 'package:hq_picker/hq_picker.dart';
 ```
 
-```yaml
-dependencies:
-hq_picker: ^0.0.1
-```
+---
 
-## Usage
+## 📱 Usage Examples
 
-### Instagram Picker
+### 1. Telegram Media Picker (The Ultimate Picker)
 
-```dart
-  List<AssetEntity> selectedAssetList = [];
-
-  ElevatedButton(
-    onPressed: () {
-      var picker = const HQPicker(
-        maxCount: 5,
-        requestType: HQPickerRequestType.image,
-      ).instagram(context);
-      
-      picker.then((value) {
-        selectedAssetList = value;
-        convertToFileList();
-      });
-    },
-    child: const Text("Instagram picker"),
-  ),
-
-```
-
-- OR
+The Telegram picker is an inline widget that provides a `DraggableScrollableSheet` with tabs for Gallery, Files, and Audio. It uses a `GlobalKey` to toggle the sheet.
 
 ```dart
-  onPressed: () {
-    const HQPicker(
-      maxCount: 10, 
-      requestType: HQPickerRequestType.image,
-    ).instagram(context).then((onValue) {
-      setState(() {
-        selectedAssetList = onValue;
-        convertToFileList();
-      });
-    });
-  },
-```
+final GlobalKey<HQPickerTelegramMediaPickersState> _telegramSheetKey = GlobalKey();
 
-### HQPickerCustomPicker
-
-```dart
-  ElevatedButton(
-    onPressed: () {
-      var picker = const HQPickerCustomPicker(
-        maxCount: 5,
-        requestType: HQPickerRequestType.image,
-      ).getPicAssets(context);
-      
-      picker.then((value) {
-        selectedAssetList = value;
-        convertToFileList();
-      });
-    },
-    child: const Text("Custom Picker"),
-  )
-```
-
-### HQPickerBottomSheets
-
-```dart
-  ElevatedButton(
-    onPressed: () {
-      var picker = HQPicker.bottomSheets(
-        context: context,
-        maxCount: 5,
-        requestType: HQPickerRequestType.image,
-      );
-      picker.then((value) {
-        setState(() {
-          selectedAssetList = value;
-          convertToFileList(); // تبدیل AssetEntity به فایل‌ها
-        });
-      });
-    },
-    child: const Text("BottomSheet"),
-  ),
-```
-
-### HQPickerTelegramMediaPickers
-
-- Step 1: Create a GlobalKey
-  Start by creating a GlobalKey to manage the state of the HQPickerTelegramMediaPickers widget.
-
-```dart
-final GlobalKey<HQPickerTelegramMediaPickersState> _sheetKey = GlobalKey();
-
-```
-
-- Step 2: Create a Button to Open the Picker
-  Next, create a button that will open the media picker when pressed.
-
-```dart
+// Open the picker
 ElevatedButton(
   onPressed: () {
-    // Open the HQPickerTelegramMediaPickers
-    _sheetKey.currentState?.toggleSheet(context);
+    _telegramSheetKey.currentState?.toggleSheet(context);
   },
   child: const Text("Open Telegram Pickers"),
 ),
 
-```
-
-- Step 3: Implement the HQPickerTelegramMediaPickers Widget
-  Add the HQPickerTelegramMediaPickers widget to your widget tree. It's important to set the requestType to a general value (like HQPickerRequestType.all) to ensure that all types of media (images, videos, files) are displayed. Avoid changing this to a more specific type if you want the user to have access to all media options.
-
-```dart
-  HQPickerTelegramMediaPickers(
-    key: _sheetKey,
-    requestType: HQPickerRequestType.all, // Set to 'all' to display images, videos, and files
-    maxCountPickMedia: 5, // Maximum number of media that can be selected
-    primeryColor: Colors.green, // Primary color for the UI
-    isRealCameraView: false, // Set to true to use the real camera view
-    onMediaPicked: (assets, files) {
-      if (files != null) {
-        for (var file in files) {
-          debugPrint(file.path); // Print the path of selected files
-        }
-      } else if (assets != null) {
-        for (var asset in assets) {
-          debugPrint("Asset: ${asset.file}"); // Print the asset details
-        }
-      }
-    },
-  ),
-```
-
-- Complete Example
-  Here's a complete example of how to implement the HQPickerTelegramMediaPickers in your Flutter app. This example shows how to select media files, convert them to a list of File, and prepare them for database storage.
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:telegram_media_pickers/telegram_media_pickers.dart';
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  final GlobalKey<HQPickerTelegramMediaPickersState> _sheetKey = GlobalKey();
-
-  List<File>? imageFiles = [];
-  List<AssetEntity> selectedAssetList = [];
-
-  void convertToFileList() async {
-    List<File>? files = [];
-
-    for (var asset in selectedAssetList) {
-      final file = await asset.file; // Convert AssetEntity to File
-      if (file != null) {
-        files.add(file);
-      }
+// Place this widget in your Widget tree (usually inside a Stack or at the bottom of a Column)
+HQPickerTelegramMediaPickers(
+  key: _telegramSheetKey,
+  requestType: HQPickerRequestType.all, // Shows Images, Videos, Audio, and Files
+  maxCountPickMedia: 5,
+  maxCountPickFiles: 5,
+  primeryColor: Colors.deepPurple,
+  onMediaPicked: (assets, files) {
+    if (assets != null) {
+      print("Picked ${assets.length} images/videos");
     }
-    setState(() {
-      imageFiles = files; // Update the state with the list of files
-    });
-  }
+    if (files != null) {
+      print("Picked ${files.length} device files");
+    }
+  },
+),
+```
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                // Open and close HQPickerTelegramMediaPickers
-                _sheetKey.currentState?.toggleSheet(context);
-                setState(() {});
-              },
-              child: const Text("Telegram Pickers"),
-            ),
-          ),
+### 2. Instagram Style Picker
 
-          // HQPickerTelegramMediaPickers widget
-        HQPickerTelegramMediaPickers(
-            key: _sheetKey,
-            requestType: HQPickerRequestType.all, // Set to 'all' to display all media types
-            maxCountPickMedia: 5,
-            maxCountPickFiles: 5,
-            primeryColor: Colors.green,
-            isRealCameraView: false,
-            onMediaPicked: (assets, files) {
-              // Update the selectedAssetList
-              if (assets != null) {
-                selectedAssetList = assets;
-                convertToFileList(); // Convert selected assets to files
-              }
+A full-screen picker where the selected image is previewed at the top, and the gallery grid is displayed at the bottom.
 
-              if (files != null) {
-                for (var file in files) {
-                  debugPrint(file.path); // Print the path of selected files
-                }
-              }
-            },
-          )
-        ],
+```dart
+ElevatedButton(
+  onPressed: () async {
+    final picker = HQPicker(
+      maxCount: 5,
+      requestType: HQPickerRequestType.image,
+      config: const HQPickerConfig(
+        enableCropping: true, 
+        compressImage: true
       ),
     );
-  }
-}
+
+    // Returns a List<HQPickerResult>
+    final results = await picker.instagram(context);
+    
+    if (results.isNotEmpty) {
+      print("Picked ${results.length} images");
+      // You can access the raw AssetEntity or the processed File:
+      // final File? processedImage = results.first.file;
+      // final AssetEntity originalAsset = results.first.asset;
+    }
+  },
+  child: const Text("Open Instagram Picker"),
+)
 ```
 
-### HQPickerScaffoldBottomSheet
+### 3. Custom Bottom Sheet Picker
+
+A standard bottom sheet picker tailored for specific configurations like video-only selection.
 
 ```dart
-  ElevatedButton(
-    onPressed: () async {
-      await HQPicker.scaffoldBottomSheet(
-        context: context,
-        maxCount: 5,
-        requestType: HQPickerRequestType.image,
-        confirmText: "Confirm",
-        textEmptyList: "No album found",
-        confirmButtonColor: Colors.blue,
-        confirmTextColor: Colors.white,
-        backgroundColor: Colors.white,
-        textEmptyListColor: Colors.grey,
-        backgroundSnackBarColor: Colors.red,
-      ).then((value) {
-        selectedAssetList = value;
-        convertToFileList();
-      });
-    },
-    child: const Text("scaffoldBottomSheet"),
-  ),
+ElevatedButton(
+  onPressed: () async {
+    final results = await HQPicker.bottomSheets(
+      context: context,
+      maxCount: 3,
+      requestType: HQPickerRequestType.video, // Videos only
+      config: const HQPickerConfig(
+        enableCropping: false,
+        compressImage: false,
+      ),
+    );
+    
+    if (results.isNotEmpty) {
+      print("Picked ${results.length} videos");
+    }
+  },
+  child: const Text("BottomSheet (Videos)"),
+)
 ```
 
-### HQPickerBottomSheetImageSelector
+---
+
+## ⚙️ Configuration & Localization
+
+You can easily theme and localize the picker by passing an `HQPickerConfig` object to any of the pickers:
 
 ```dart
-
-  ElevatedButton(
-    onPressed: () async {
-      await HQPicker.bottomSheetImageSelector(
-        cameraImageSettings: HQPickerCameraImageSettings(),
-        context: context,
-        maxCount: 5,
-        requestType: HQPickerRequestType.image,
-        confirmText: "Confirm",
-        textEmptyList: "No album found",
-        confirmButtonColor: Colors.blue,
-        confirmTextColor: Colors.black,
-        backgroundColor: Colors.white,
-        textEmptyListColor: Colors.grey,
-        backgroundSnackBarColor: Colors.red,
-      ).then((value) {
-        selectedAssetList = value;
-        convertToFileList();
-      });
-    },
-    child: const Text("bottomSheetImageSelector"),
+final results = await HQPicker.scaffoldBottomSheet(
+  context: context,
+  maxCount: 10,
+  requestType: HQPickerRequestType.all,
+  config: const HQPickerConfig(
+    localizations: HQPickerLocalizations.ar(), // Arabic Localization
+    theme: HQPickerTheme(
+      appbarColor: Colors.deepPurple,
+      confirmButtonColor: Colors.deepPurple,
+    ),
   ),
+);
 ```
+
+---
+
+## 📝 Return Types
+
+- **`HQPickerTelegramMediaPickers`** returns raw `List<AssetEntity>` (for gallery) and `List<File>` (for device files) via the `onMediaPicked` callback.
+- **Other Pickers (`instagram`, `customPicker`, `bottomSheets`)** return a `List<HQPickerResult>`. This result contains:
+  - `asset`: The original `AssetEntity`.
+  - `file`: The processed `File?` (if cropping or compression was enabled).
+

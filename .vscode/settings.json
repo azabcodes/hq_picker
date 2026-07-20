@@ -1,0 +1,55 @@
+{
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "dart.previewFlutterUiGuides": true,
+    "dart.flutterHotReloadOnSave": "all",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "thumbs.db": true,
+        ".idea": true,
+        ".dart_tool": true,
+        "build": true,
+        "ios/Pods": true,
+        "ios/.symlinks": true,
+        "android/.gradle": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.dart_tool/**": true,
+        "**/build/**": true,
+        "**/ios/Pods/**": true,
+        "**/android/.gradle/**": true
+    },
+    "search.exclude": {
+        "**/build": true,
+        "**/.dart_tool": true,
+        "**/ios/Pods": true,
+        "**assets": true
+    },
+    "[dart]": {
+        "editor.formatOnSave": true,
+        "editor.selectionHighlight": false,
+        "editor.rulers": [
+            120
+        ],
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        }
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "java.configuration.updateBuildConfiguration": "interactive"
+}
