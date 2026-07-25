@@ -40,6 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<HQPickerResult> selectedResults = [];
   List<AssetEntity> telegramAssets = [];
   List<FileSystemEntity> telegramFiles = [];
+  HQPickerShape selectedShape = HQPickerShape.instagram;
 
   void _updateResults(List<HQPickerResult> results) {
     setState(() {
@@ -47,47 +48,18 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  // Use Case 1: Custom Picker with Cropping and Compressing
-  void _openCustomPickerWithCrop() async {
-    final results = await HQPicker.customPicker(
+  void _openSelectedShapePicker() async {
+    final results = await HQPicker.pick(
       context: context,
+      shape: selectedShape,
       maxCount: 5,
-      requestType: HQPickerRequestType.image,
+      requestType: HQPickerRequestType.all,
       config: const HQPickerConfig(
         enableCropping: true,
         compressImage: true,
         compressQuality: 70,
-        localizations: HQPickerLocalizations.en(),
-        theme: HQPickerTheme(
-          appbarColor: Colors.deepPurple,
-          confirmButtonColor: Colors.deepPurple,
-          indicatorColor: Colors.deepPurple,
-        ),
       ),
     );
-    _updateResults(results);
-  }
-
-  // Use Case 2: Bottom Sheet Picker for Videos
-  void _openBottomSheetForVideos() async {
-    final results = await HQPicker.bottomSheets(
-      context: context,
-      maxCount: 3,
-      requestType: HQPickerRequestType.video,
-      config: const HQPickerConfig(enableCropping: false, compressImage: false),
-    );
-    _updateResults(results);
-  }
-
-  // Use Case 3: Instagram Style Picker
-  void _openInstagramPicker() async {
-    final picker = const HQPicker(
-      maxCount: 5,
-      requestType: HQPickerRequestType.image,
-      config: HQPickerConfig(enableCropping: true, compressImage: true),
-    );
-
-    final results = await picker.instagram(context);
     _updateResults(results);
   }
 
@@ -101,35 +73,53 @@ class _MyHomePageState extends State<MyHomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              "Select a Use Case:",
+              "Select Picker Shape / Style:",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
-            ElevatedButton.icon(
-              icon: const Icon(Icons.crop),
-              label: const Text("Custom Picker (Images + Crop + Compress)"),
-              onPressed: _openCustomPickerWithCrop,
+            DropdownButtonFormField<HQPickerShape>(
+              initialValue: selectedShape,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Picker Shape (HQPickerShape)',
+              ),
+              items: HQPickerShape.values.map((shape) {
+                return DropdownMenuItem(
+                  value: shape,
+                  child: Text(shape.name),
+                );
+              }).toList(),
+              onChanged: (shape) {
+                if (shape != null) {
+                  setState(() {
+                    selectedShape = shape;
+                  });
+                }
+              },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             ElevatedButton.icon(
-              icon: const Icon(Icons.video_collection),
-              label: const Text("Bottom Sheet (Videos Only)"),
-              onPressed: _openBottomSheetForVideos,
+              icon: const Icon(Icons.touch_app),
+              label: Text("Launch ${selectedShape.name.toUpperCase()} Picker"),
+              onPressed: _openSelectedShapePicker,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            const Divider(thickness: 1),
 
-            ElevatedButton.icon(
-              icon: const Icon(Icons.camera_alt),
-              label: const Text("Instagram Style Picker"),
-              onPressed: _openInstagramPicker,
+            const Text(
+              "Inline Telegram Picker Example:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
 
             ElevatedButton.icon(
               icon: const Icon(Icons.send),
-              label: const Text("Telegram Media Pickers (Widget)"),
+              label: const Text("Toggle Inline Telegram Sheet"),
               onPressed: () {
                 _telegramSheetKey.currentState?.toggleSheet(context);
               },
@@ -162,18 +152,29 @@ class _MyHomePageState extends State<MyHomePage> {
             // Show selected results from main pickers
             if (selectedResults.isNotEmpty)
               ...selectedResults.map((result) {
-                final hasFile = result.file != null;
+                final file = result.file;
+                final asset = result.asset;
                 return ListTile(
-                  leading: hasFile
+                  leading: file != null
                       ? Image.file(
-                          result.file!,
+                          file,
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.insert_drive_file),
                         )
                       : const Icon(Icons.image),
-                  title: Text(hasFile ? "Processed Image" : "Raw Asset"),
-                  subtitle: Text("ID: ${result.asset.id}"),
+                  title: Text(
+                    file != null
+                        ? "File: ${file.path.split('/').last}"
+                        : "Asset: ${asset?.id}",
+                  ),
+                  subtitle: Text(
+                    asset != null
+                        ? "Type: ${asset.type}"
+                        : "Path: ${file?.path}",
+                  ),
                 );
               }),
 

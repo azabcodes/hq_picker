@@ -2,14 +2,16 @@
 
 A high-performance, fully customizable, and multi-mode media picker for Flutter, entirely powered by the **BLoC pattern**. HQPicker ensures 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
 
-## ✨ Features
+##  Features
 
 - **BLoC Architecture**: Zero `setState` inside the core picker! Optimized for fast rebuilds and scalability.
+- **Unified `HQPickerShape` API**: Choose any UI style/shape (`instagram`, `telegram`, `custom`, `bottomSheet`, `scaffoldBottomSheet`, `bottomSheetImageSelector`, `document`, `directory`) using a single enum!
 - **Pagination Built-in**: Lazy-loads images/videos in chunks of 60 to prevent memory leaks and freezing.
-- **Multiple UI Modes**:
-  - 📸 **Instagram Style**: Full-page preview with grid selection.
-  - 💬 **Telegram Style**: Dragable bottom sheet with tabs for Media, Audio, and Files.
-  - 📑 **Custom Picker / Scaffold Bottom Sheet**: Highly customizable simple pickers.
+- **Multiple UI Shapes & Modes**:
+  -  **Instagram Style**: Full-page preview with grid selection.
+  -  **Telegram Style**: Draggable bottom sheet with tabs for Media, Audio, and Files.
+  -  **Custom Picker / Scaffold Bottom Sheet**: Highly customizable simple pickers.
+  -  **Document & Folder Picker**: Native system dialogs for files and directories.
 - **File System Support**: Natively fetches and filters Audio (`.mp3`, `.wav`, etc.) and general Files from the device.
 - **Cropping & Compression**: Built-in support for editing images before returning them.
 - **Localization**: Supports multiple languages (English, Arabic, etc.) via Dependency Injection.
@@ -26,7 +28,7 @@ flutter pub add hq_picker
 Or add it manually to your `pubspec.yaml`:
 ```yaml
 dependencies:
-  hq_picker: ^1.0.0
+  hq_picker: ^0.0.2
 ```
 
 Import it in your Dart code:
@@ -38,103 +40,101 @@ import 'package:hq_picker/hq_picker.dart';
 
 ## 📱 Usage Examples
 
-### 1. Telegram Media Picker (The Ultimate Picker)
+### 1. Unified `HQPickerShape` API (Recommended)
 
-The Telegram picker is an inline widget that provides a `DraggableScrollableSheet` with tabs for Gallery, Files, and Audio. It uses a `GlobalKey` to toggle the sheet.
+You can launch any picker shape using `HQPicker.pick(...)` or `HQPickerFilePicker.pick(...)`:
+
+```dart
+// Launch Instagram shape
+final results = await HQPicker.pick(
+  context: context,
+  shape: HQPickerShape.instagram,
+  maxCount: 5,
+  requestType: HQPickerRequestType.image,
+);
+
+// Launch Telegram shape modally
+final telegramResults = await HQPicker.pick(
+  context: context,
+  shape: HQPickerShape.telegram,
+  maxCount: 5,
+);
+
+// Launch Document picker
+final docResults = await HQPicker.pick(
+  context: context,
+  shape: HQPickerShape.document,
+  allowedExtensions: ['pdf', 'docx'],
+);
+```
+
+### 2. Convenience Helper Methods
+
+`HQPickerFilePicker` and `HQPicker` provide clean convenience methods centered around `HQPickerShape`:
+
+```dart
+// Pick Images
+final images = await HQPickerFilePicker.pickImage(
+  context: context,
+  shape: HQPickerShape.instagram,
+  maxCount: 5,
+);
+
+// Pick Videos
+final videos = await HQPickerFilePicker.pickVideo(
+  context: context,
+  shape: HQPickerShape.custom,
+  maxCount: 3,
+);
+
+// Pick Documents
+final docs = await HQPickerFilePicker.pickDocument(
+  shape: HQPickerShape.document,
+  allowedExtensions: ['pdf'],
+);
+
+// Pick Directory
+final dir = await HQPickerFilePicker.pickDirectory();
+```
+
+### 3. Inline Telegram Media Sheet
+
+The Telegram picker can also be used inline in your widget tree:
 
 ```dart
 final GlobalKey<HQPickerTelegramMediaPickersState> _telegramSheetKey = GlobalKey();
 
-// Open the picker
+// Open the sheet
 ElevatedButton(
   onPressed: () {
     _telegramSheetKey.currentState?.toggleSheet(context);
   },
-  child: const Text("Open Telegram Pickers"),
-),
+  child: const Text("Open Telegram Sheet"),
+);
 
-// Place this widget in your Widget tree (usually inside a Stack or at the bottom of a Column)
+// Widget in tree
 HQPickerTelegramMediaPickers(
   key: _telegramSheetKey,
-  requestType: HQPickerRequestType.all, // Shows Images, Videos, Audio, and Files
+  requestType: HQPickerRequestType.all,
   maxCountPickMedia: 5,
   maxCountPickFiles: 5,
   primeryColor: Colors.deepPurple,
   onMediaPicked: (assets, files) {
-    if (assets != null) {
-      print("Picked ${assets.length} images/videos");
-    }
-    if (files != null) {
-      print("Picked ${files.length} device files");
-    }
+    print("Picked ${assets?.length} assets and ${files?.length} files");
   },
-),
-```
-
-### 2. Instagram Style Picker
-
-A full-screen picker where the selected image is previewed at the top, and the gallery grid is displayed at the bottom.
-
-```dart
-ElevatedButton(
-  onPressed: () async {
-    final picker = HQPicker(
-      maxCount: 5,
-      requestType: HQPickerRequestType.image,
-      config: const HQPickerConfig(
-        enableCropping: true, 
-        compressImage: true
-      ),
-    );
-
-    // Returns a List<HQPickerResult>
-    final results = await picker.instagram(context);
-    
-    if (results.isNotEmpty) {
-      print("Picked ${results.length} images");
-      // You can access the raw AssetEntity or the processed File:
-      // final File? processedImage = results.first.file;
-      // final AssetEntity originalAsset = results.first.asset;
-    }
-  },
-  child: const Text("Open Instagram Picker"),
-)
-```
-
-### 3. Custom Bottom Sheet Picker
-
-A standard bottom sheet picker tailored for specific configurations like video-only selection.
-
-```dart
-ElevatedButton(
-  onPressed: () async {
-    final results = await HQPicker.bottomSheets(
-      context: context,
-      maxCount: 3,
-      requestType: HQPickerRequestType.video, // Videos only
-      config: const HQPickerConfig(
-        enableCropping: false,
-        compressImage: false,
-      ),
-    );
-    
-    if (results.isNotEmpty) {
-      print("Picked ${results.length} videos");
-    }
-  },
-  child: const Text("BottomSheet (Videos)"),
-)
+);
 ```
 
 ---
 
-## ⚙️ Configuration & Localization
+##  Configuration & Localization
 
-You can easily theme and localize the picker by passing an `HQPickerConfig` object to any of the pickers:
+You can easily theme and localize the picker by passing an `HQPickerConfig` object:
 
 ```dart
-final results = await HQPicker.scaffoldBottomSheet(
+final results = await HQPicker.pick(
   context: context,
+  shape: HQPickerShape.scaffoldBottomSheet,
   maxCount: 10,
   requestType: HQPickerRequestType.all,
   config: const HQPickerConfig(
@@ -149,10 +149,8 @@ final results = await HQPicker.scaffoldBottomSheet(
 
 ---
 
-## 📝 Return Types
+##  Return Types
 
-- **`HQPickerTelegramMediaPickers`** returns raw `List<AssetEntity>` (for gallery) and `List<File>` (for device files) via the `onMediaPicked` callback.
-- **Other Pickers (`instagram`, `customPicker`, `bottomSheets`)** return a `List<HQPickerResult>`. This result contains:
-  - `asset`: The original `AssetEntity`.
-  - `file`: The processed `File?` (if cropping or compression was enabled).
-
+All pickers return `List<HQPickerResult>`. Each `HQPickerResult` contains:
+- `asset`: The original `AssetEntity?` (if picked from gallery).
+- `file`: The `File?` representation or processed file (if cropped/compressed or picked from device file system).

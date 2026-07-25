@@ -7,24 +7,27 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/bottom_sheet.dart';
 import 'package:hq_picker/src/bottom_sheet_image_selector.dart';
 import 'package:hq_picker/src/custom_picker.dart';
+import 'package:hq_picker/src/file_picker_service.dart';
 import 'package:hq_picker/src/scaffold_bottom_sheet.dart';
+import 'package:hq_picker/src/telegram_media_picker.dart';
 import 'package:hq_picker/src/tools/media_editor.dart';
 import 'package:hq_picker/src/tools/media_services.dart';
 import 'package:hq_picker/src/widget/global/camera_image_setting.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'src/config/hq_picker_config.dart';
-import 'src/config/hq_picker_result.dart';
-import 'src/bloc/hq_picker_bloc.dart';
-import 'src/bloc/hq_picker_event.dart';
-import 'src/bloc/hq_picker_state.dart';
+import 'package:hq_picker/src/bloc/hq_picker_bloc.dart';
+import 'package:hq_picker/src/bloc/hq_picker_event.dart';
+import 'package:hq_picker/src/bloc/hq_picker_state.dart';
+import 'package:hq_picker/src/config/hq_picker_config.dart';
+import 'package:hq_picker/src/config/hq_picker_result.dart';
+import 'package:hq_picker/src/config/hq_picker_shape.dart';
 
 export 'package:hq_picker/src/custom_picker.dart';
 export 'package:hq_picker/src/file_picker_service.dart';
@@ -34,10 +37,11 @@ export 'package:hq_picker/src/widget/global/camera_image_setting.dart';
 export 'package:photo_manager/photo_manager.dart';
 export 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
-export 'src/config/hq_picker_config.dart';
-export 'src/config/hq_picker_localizations.dart';
-export 'src/config/hq_picker_result.dart';
-export 'src/config/hq_picker_theme.dart';
+export 'package:hq_picker/src/config/hq_picker_config.dart';
+export 'package:hq_picker/src/config/hq_picker_localizations.dart';
+export 'package:hq_picker/src/config/hq_picker_result.dart';
+export 'package:hq_picker/src/config/hq_picker_shape.dart';
+export 'package:hq_picker/src/config/hq_picker_theme.dart';
 
 /// A stateful widget that allows users to pick media files (images, videos, audio, files) from their device.
 ///
@@ -389,6 +393,217 @@ class HQPicker extends StatefulWidget {
     }
     return [];
   }
+
+  /// Displays the Telegram-style sliding media sheet modally.
+  static Future<List<HQPickerResult>> telegram({
+    required BuildContext context,
+    required int maxCount,
+    HQPickerRequestType requestType = HQPickerRequestType.all,
+    HQPickerConfig config = const HQPickerConfig(),
+    bool isRealCameraView = false,
+    Color? primeryColor,
+  }) async {
+    final Completer<List<HQPickerResult>> completer = Completer();
+    final GlobalKey<HQPickerTelegramMediaPickersState> key = GlobalKey();
+
+    late OverlayEntry overlayEntry;
+    overlayEntry = OverlayEntry(
+      builder: (context) {
+        return HQPickerTelegramMediaPickers(
+          key: key,
+          maxCountPickMedia: maxCount,
+          maxCountPickFiles: maxCount,
+          requestType: requestType,
+          isRealCameraView: isRealCameraView,
+          primeryColor: primeryColor ?? const Color(0xFF2C2C2C),
+          onMediaPicked: (assets, files) async {
+            if (overlayEntry.mounted) {
+              overlayEntry.remove();
+            }
+            List<HQPickerResult> results = [];
+            if (assets != null && assets.isNotEmpty) {
+              results = await _processAssets(context, assets, config);
+            } else if (files != null && files.isNotEmpty) {
+              results = files.map((f) => HQPickerResult(file: File(f.path))).toList();
+            }
+            if (!completer.isCompleted) {
+              completer.complete(results);
+            }
+          },
+        );
+      },
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      key.currentState?.toggleSheet(context);
+    });
+
+    return completer.future;
+  }
+
+  /// Launches the Instagram-style full-screen preview & grid picker.
+  static Future<List<HQPickerResult>> instagramPicker({
+    required BuildContext context,
+    required int maxCount,
+    required HQPickerRequestType requestType,
+    HQPickerConfig config = const HQPickerConfig(),
+    String confirmText = 'Send',
+    Color confirmTextColor = Colors.white,
+    Color textColor = Colors.white,
+    Color backgroundColor = const Color(0xFF2A2D3E),
+    Color appbarColor = const Color(0xFF2A2D3E),
+  }) async {
+    final picker = HQPicker(
+      maxCount: maxCount,
+      requestType: requestType,
+      config: config,
+      confirmText: confirmText,
+      confirmTextColor: confirmTextColor,
+      textColor: textColor,
+      backgroundColor: backgroundColor,
+      appbarColor: appbarColor,
+    );
+    return await picker.instagram(context);
+  }
+
+  /// Unified static method to launch any picker UI style/shape.
+  static Future<List<HQPickerResult>> pick({
+    required BuildContext context,
+    required HQPickerShape shape,
+    int maxCount = 1,
+    HQPickerRequestType requestType = HQPickerRequestType.all,
+    HQPickerConfig config = const HQPickerConfig(),
+    List<String>? allowedExtensions,
+  }) async {
+    switch (shape) {
+      case HQPickerShape.instagram:
+        return await instagramPicker(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.custom:
+        return await customPicker(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.bottomSheet:
+        return await bottomSheets(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.scaffoldBottomSheet:
+        return await scaffoldBottomSheet(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.bottomSheetImageSelector:
+        return await bottomSheetImageSelector(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.telegram:
+        return await telegram(
+          context: context,
+          maxCount: maxCount,
+          requestType: requestType,
+          config: config,
+        );
+
+      case HQPickerShape.document:
+        return await HQPickerFilePicker.pickDocument(
+          context: context,
+          shape: shape,
+          allowedExtensions: allowedExtensions,
+          maxCount: maxCount,
+          config: config,
+        );
+
+      case HQPickerShape.directory:
+        return await HQPickerFilePicker.pickDirectory(
+          context: context,
+          shape: shape,
+          maxCount: maxCount,
+        );
+    }
+  }
+
+  /// Picks images using a specified [HQPickerShape] (defaults to [HQPickerShape.instagram]).
+  static Future<List<HQPickerResult>> pickImage({
+    required BuildContext context,
+    HQPickerShape shape = HQPickerShape.instagram,
+    int maxCount = 1,
+    HQPickerConfig config = const HQPickerConfig(),
+  }) async {
+    return await pick(
+      context: context,
+      shape: shape,
+      maxCount: maxCount,
+      requestType: HQPickerRequestType.image,
+      config: config,
+    );
+  }
+
+  /// Picks videos using a specified [HQPickerShape] (defaults to [HQPickerShape.custom]).
+  static Future<List<HQPickerResult>> pickVideo({
+    required BuildContext context,
+    HQPickerShape shape = HQPickerShape.custom,
+    int maxCount = 1,
+    HQPickerConfig config = const HQPickerConfig(),
+  }) async {
+    return await pick(
+      context: context,
+      shape: shape,
+      maxCount: maxCount,
+      requestType: HQPickerRequestType.video,
+      config: config,
+    );
+  }
+
+  /// Picks documents using a specified [HQPickerShape] (defaults to [HQPickerShape.document]).
+  static Future<List<HQPickerResult>> pickDocument({
+    BuildContext? context,
+    HQPickerShape shape = HQPickerShape.document,
+    List<String>? allowedExtensions,
+    int maxCount = 1,
+    HQPickerConfig config = const HQPickerConfig(),
+  }) async {
+    return await HQPickerFilePicker.pickDocument(
+      context: context,
+      shape: shape,
+      allowedExtensions: allowedExtensions,
+      maxCount: maxCount,
+      config: config,
+    );
+  }
+
+  /// Picks directories using a specified [HQPickerShape] (defaults to [HQPickerShape.directory]).
+  static Future<List<HQPickerResult>> pickDirectory({
+    BuildContext? context,
+    HQPickerShape shape = HQPickerShape.directory,
+  }) async {
+    return await HQPickerFilePicker.pickDirectory(
+      context: context,
+      shape: shape,
+    );
+  }
+
 
   @override
   State<HQPicker> createState() => _HQPickerState();
