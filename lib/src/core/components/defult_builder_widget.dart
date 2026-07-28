@@ -3,17 +3,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
+import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
+import 'package:hq_picker/src/core/components/camera_preview_widget.dart';
 import 'package:hq_picker/src/telegram_media_picker.dart';
-import 'package:hq_picker/src/widget/camera_preview_widget.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
-import '../../bloc/hq_picker_bloc.dart';
-import '../../bloc/hq_picker_event.dart';
-import '../../bloc/hq_picker_state.dart';
+import '../bloc/hq_picker_bloc.dart';
+import '../bloc/hq_picker_event.dart';
+import '../tools/media_services.dart';
 
-class HQPickerDefultBuilderWidget extends StatelessWidget {
+class HQPickerDefultBuilderWidget extends StatefulWidget {
   final HQPickerTelegramMediaPickers widget;
   final ScrollController controller;
 
@@ -23,48 +24,67 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
     required this.controller,
   });
 
+  @override
+  State<HQPickerDefultBuilderWidget> createState() => _HQPickerDefultBuilderWidgetState();
+}
+
+class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidget>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   void _sendSelectedFiles(BuildContext context, HQPickerState state) {
-    widget.onMediaPicked?.call(state.selectedAssetList, null);
+    widget.widget.onMediaPicked?.call(state.selectedAssetList, null);
     context.read<HQPickerBloc>().add(const ToggleSheetEvent());
   }
 
-  Future<void> pickImageCamera(BuildContext context, ImageSource source) async {
-    final myFile = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: widget.cameraImageSettings?.imageQuality,
-      preferredCameraDevice: widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
-      maxWidth: widget.cameraImageSettings?.maxWidth,
-      maxHeight: widget.cameraImageSettings?.maxHeight,
-    );
+  Future<void> pickMediaCamera(BuildContext context, ImageSource source) async {
+    XFile? myFile;
+    if (widget.widget.requestType == HQPickerRequestType.video) {
+      myFile = await ImagePicker().pickVideo(
+        source: source,
+        preferredCameraDevice:
+            widget.widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
+      );
+    } else {
+      myFile = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: widget.widget.cameraImageSettings?.imageQuality,
+        preferredCameraDevice:
+            widget.widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
+        maxWidth: widget.widget.cameraImageSettings?.maxWidth,
+        maxHeight: widget.widget.cameraImageSettings?.maxHeight,
+      );
+    }
 
-    bool isSaved = false;
     if (myFile != null) {
-      File image = File(myFile.path);
-      if (Platform.isAndroid) {
-        isSaved = await FlutterSaver.saveImageAndroid(fileImage: image);
-      } else {
-        isSaved = await FlutterSaver.saveImageIos(fileImage: image);
+      File file = File(myFile.path);
+      try {
+        if (widget.widget.requestType != HQPickerRequestType.video) {
+          if (Platform.isAndroid) {
+            await FlutterSaver.saveImageAndroid(fileImage: file);
+          } else if (Platform.isIOS) {
+            await FlutterSaver.saveImageIos(fileImage: file);
+          }
+        }
+      } catch (e) {
+        debugPrint('Save to gallery error: $e');
       }
 
-      debugPrint('Image saved: $isSaved');
-
-      if (isSaved) {
-        if (context.mounted) {
-          context.read<HQPickerBloc>().add(
-            LoadAlbumsEvent(
-              requestType: widget.requestType,
-              fetchFileCounts: true,
-            ),
-          );
-        }
-      } else {
-        debugPrint('Error: Image was not saved.');
+      if (context.mounted) {
+        context.read<HQPickerBloc>().add(
+          LoadAlbumsEvent(
+            requestType: widget.widget.requestType,
+            fetchFileCounts: true,
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return BlocBuilder<HQPickerBloc, HQPickerState>(
       builder: (context, state) {
         return Stack(
@@ -79,17 +99,10 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
               child: state.assetsList.isEmpty
                   ? Center(
                       child: state.status == HQPickerStatus.loading
-                          ? widget.loading ?? const CircularProgressIndicator.adaptive()
+                          ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
                           : Text(
-                              widget.textEmptyList,
-                              style: TextStyle(
-                                color:
-                                    widget.textEmptyListColor ??
-                                    Theme.of(context).colorScheme.onPrimary,
-                                fontSize:
-                                    Theme.of(context).primaryTextTheme.headlineMedium?.fontSize ??
-                                    20,
-                              ),
+                              widget.widget.textEmptyList,
+                              style: widget.widget.config.theme.resolvedEmptyListTextStyle,
                             ),
                     )
                   : Padding(
@@ -113,8 +126,7 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: GridView.builder(
-                                  shrinkWrap: true,
-                                  controller: controller,
+                                  controller: widget.controller,
                                   physics: const BouncingScrollPhysics(),
                                   itemCount: state.assetsList.length + 1,
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -125,15 +137,15 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
                                   ),
                                   itemBuilder: (context, index) {
                                     if (index == 0) {
-                                      if (widget.isRealCameraView) {
+                                      if (widget.widget.isRealCameraView) {
                                         return HQPickerCameraPreviewWidget(
                                           pickImageCamera: (source) =>
-                                              pickImageCamera(context, source),
+                                              pickMediaCamera(context, source),
                                         );
                                       } else {
                                         return HQPickerFackeCameraWidget(
                                           pickImageCamera: (source) =>
-                                              pickImageCamera(context, source),
+                                              pickMediaCamera(context, source),
                                         );
                                       }
                                     } else {
@@ -141,7 +153,7 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
                                       return assetWidget(
                                         context,
                                         assetEntity,
-                                        widget.maxCountPickMedia,
+                                        widget.widget.maxCountPickMedia,
                                         state,
                                       );
                                     }
@@ -169,9 +181,9 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
                       child: CircleAvatar(
                         radius: 40,
                         backgroundColor: theme.colorScheme.primary,
-                        child: Icon(
-                          Icons.send,
-                          color: theme.colorScheme.onPrimary,
+                        child: IconTheme(
+                          data: IconThemeData(color: theme.colorScheme.onPrimary),
+                          child: widget.widget.config.icons.send,
                         ),
                       ),
                     ),
@@ -189,7 +201,7 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
                         ),
                         child: Text(
                           '${state.selectedAssetList.length}',
-                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                          style: widget.widget.config.theme.resolvedBadgeTextStyle,
                         ),
                       ),
                     ),
@@ -209,42 +221,79 @@ class HQPickerDefultBuilderWidget extends StatelessWidget {
     HQPickerState state,
   ) {
     bool isSelected = state.selectedAssetList.contains(assetEntity);
-    return GestureDetector(
-      onTap: () {
-        context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
-      },
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AssetEntityImage(
-              assetEntity,
-              isOriginal: false,
-              thumbnailSize: const ThumbnailSize.square(80),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(
-                  child: Icon(Icons.error, color: Colors.red),
-                );
-              },
-            ),
-          ),
-          if (isSelected)
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () {
+          context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+        },
+        child: Stack(
+          children: [
             Positioned.fill(
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  border: Border.all(width: 8, color: Colors.white70),
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 30,
-                ),
+              child: AssetEntityImage(
+                assetEntity,
+                isOriginal: false,
+                thumbnailSize: const ThumbnailSize.square(200),
+                thumbnailFormat: ThumbnailFormat.jpeg,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: IconTheme(
+                      data: const IconThemeData(color: Colors.red),
+                      child: widget.widget.config.icons.error,
+                    ),
+                  );
+                },
               ),
             ),
-        ],
+            if (assetEntity.type == AssetType.video)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconTheme(
+                        data: const IconThemeData(color: Colors.white, size: 12),
+                        child: widget.widget.config.icons.play,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        _formatDuration(assetEntity.duration),
+                        style: widget.widget.config.theme.resolvedVideoDurationTextStyle,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (isSelected)
+              Positioned.fill(
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    border: Border.all(width: 8, color: Colors.white70),
+                  ),
+                  child: IconTheme(
+                    data: const IconThemeData(color: Colors.white, size: 30),
+                    child: widget.widget.config.icons.check,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
   }
 }

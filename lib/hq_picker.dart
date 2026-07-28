@@ -5,43 +5,36 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
-import 'package:hq_picker/src/bottom_sheet.dart';
-import 'package:hq_picker/src/bottom_sheet_image_selector.dart';
-import 'package:hq_picker/src/custom_picker.dart';
-import 'package:hq_picker/src/file_picker_service.dart';
-import 'package:hq_picker/src/scaffold_bottom_sheet.dart';
+import 'package:hq_picker/src/core/bloc/hq_picker_bloc.dart';
+import 'package:hq_picker/src/core/bloc/hq_picker_event.dart';
+import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
+import 'package:hq_picker/src/core/components/camera_image_setting.dart';
+import 'package:hq_picker/src/core/config/hq_picker_config.dart';
+import 'package:hq_picker/src/core/config/hq_picker_result.dart';
+import 'package:hq_picker/src/core/config/hq_picker_shape.dart';
+import 'package:hq_picker/src/core/tools/media_editor.dart';
+import 'package:hq_picker/src/core/tools/media_services.dart';
 import 'package:hq_picker/src/telegram_media_picker.dart';
-import 'package:hq_picker/src/tools/media_editor.dart';
-import 'package:hq_picker/src/tools/media_services.dart';
-import 'package:hq_picker/src/widget/global/camera_image_setting.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
-import 'package:hq_picker/src/bloc/hq_picker_bloc.dart';
-import 'package:hq_picker/src/bloc/hq_picker_event.dart';
-import 'package:hq_picker/src/bloc/hq_picker_state.dart';
-import 'package:hq_picker/src/config/hq_picker_config.dart';
-import 'package:hq_picker/src/config/hq_picker_result.dart';
-import 'package:hq_picker/src/config/hq_picker_shape.dart';
-
-export 'package:hq_picker/src/custom_picker.dart';
-export 'package:hq_picker/src/file_picker_service.dart';
+export 'package:hq_picker/src/core/components/camera_image_setting.dart';
+export 'package:hq_picker/src/core/config/hq_picker_config.dart';
+export 'package:hq_picker/src/core/config/hq_picker_icons.dart';
+export 'package:hq_picker/src/core/config/hq_picker_localizations.dart';
+export 'package:hq_picker/src/core/config/hq_picker_result.dart';
+export 'package:hq_picker/src/core/config/hq_picker_shape.dart';
+export 'package:hq_picker/src/core/config/hq_picker_theme.dart';
+export 'package:hq_picker/src/core/tools/media_services.dart';
 export 'package:hq_picker/src/telegram_media_picker.dart';
-export 'package:hq_picker/src/tools/media_services.dart';
-export 'package:hq_picker/src/widget/global/camera_image_setting.dart';
 export 'package:photo_manager/photo_manager.dart';
 export 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
-
-export 'package:hq_picker/src/config/hq_picker_config.dart';
-export 'package:hq_picker/src/config/hq_picker_localizations.dart';
-export 'package:hq_picker/src/config/hq_picker_result.dart';
-export 'package:hq_picker/src/config/hq_picker_shape.dart';
-export 'package:hq_picker/src/config/hq_picker_theme.dart';
 
 /// A stateful widget that allows users to pick media files (images, videos, audio, files) from their device.
 ///
@@ -78,33 +71,44 @@ class HQPicker extends StatefulWidget {
       return assets.map((a) => HQPickerResult(asset: a)).toList();
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
+    bool dialogShown = false;
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      dialogShown = true;
+    }
 
     List<HQPickerResult> finalResult = [];
-    for (var asset in assets) {
-      if (asset.type == AssetType.image) {
-        File? file = await asset.file;
-        if (file != null) {
-          if (!context.mounted) return finalResult;
-          File? processed = await HQPickerMediaEditor.processImage(
-            context,
-            file,
-            config,
-          );
-          finalResult.add(HQPickerResult(asset: asset, file: processed));
+    try {
+      for (var asset in assets) {
+        if (asset.type == AssetType.image) {
+          File? file = await asset.file;
+          if (file != null) {
+            if (!context.mounted) {
+              finalResult.add(HQPickerResult(asset: asset, file: file));
+              continue;
+            }
+            File? processed = await HQPickerMediaEditor.processImage(
+              context,
+              file,
+              config,
+            );
+            finalResult.add(HQPickerResult(asset: asset, file: processed ?? file));
+          } else {
+            finalResult.add(HQPickerResult(asset: asset));
+          }
         } else {
           finalResult.add(HQPickerResult(asset: asset));
         }
-      } else {
-        finalResult.add(HQPickerResult(asset: asset));
+      }
+    } finally {
+      if (dialogShown && context.mounted) {
+        Navigator.pop(context);
       }
     }
-
-    if (context.mounted) Navigator.pop(context);
     return finalResult;
   }
 
@@ -162,8 +166,9 @@ class HQPicker extends StatefulWidget {
   /// The camera image settings to use when capturing images.
   final HQPickerCameraImageSettings? cameraImageSettings;
 
-  /// The title of the widget.
-  final Widget title;
+  /// The title of the widget. If null, defaults to [HQPickerLocalizations.gallery]
+  /// styled with [HQPickerTheme.resolvedAlbumNameTextStyle].
+  final Widget? title;
 
   /// The configuration for the picker.
   final HQPickerConfig config;
@@ -191,208 +196,9 @@ class HQPicker extends StatefulWidget {
     this.textEmptyList = 'No albums found.',
     this.loading,
     this.cameraImageSettings,
-    this.title = const Text(
-      'Album',
-      style: TextStyle(fontSize: 22, color: Colors.white),
-    ),
+    this.title,
     super.key,
   });
-
-  static Future<List<HQPickerResult>> customPicker({
-    required BuildContext context,
-    required int maxCount,
-    required HQPickerRequestType requestType,
-    HQPickerConfig config = const HQPickerConfig(),
-    final Key? key,
-    bool showOnlyVideo = true,
-    bool showOnlyImage = true,
-    String confirmText = 'Send',
-    String textTitleImageTabBar = 'Images',
-    String textTitleVideoTabBar = 'Videos',
-    String textEmptyList = 'No albums found.',
-    Color confirmTextColor = Colors.white,
-    Color backBottomColor = Colors.white,
-    Color backgroundColor = const Color.fromARGB(255, 206, 164, 236),
-    Color backgroundAppBarColor = const Color.fromARGB(255, 206, 164, 236),
-    Color backgroundTabBarColor = const Color(0xFF6A0DAD),
-    Color indicatorColor = Colors.blue,
-    Color textEmptyListColor = const Color(0xFF6A0DAD),
-    Widget title = const Text(
-      'Album',
-      style: TextStyle(fontSize: 22, color: Colors.white),
-    ),
-  }) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HQPickerCustomPicker(
-          maxCount: maxCount,
-          requestType: requestType,
-          showOnlyVideo: showOnlyVideo,
-          showOnlyImage: showOnlyImage,
-          confirmText: confirmText,
-          textTitleImageTabBar: textTitleImageTabBar,
-          textTitleVideoTabBar: textTitleVideoTabBar,
-          textEmptyList: textEmptyList,
-          confirmTextColor: confirmTextColor,
-          backBottomColor: backBottomColor,
-          backgroundColor: backgroundColor,
-          backgroundAppBarColor: backgroundAppBarColor,
-          backgroundTabBarColor: backgroundTabBarColor,
-          indicatorColor: indicatorColor,
-          title: title,
-          textEmptyListColor: textEmptyListColor,
-          key: key,
-        ),
-      ),
-    );
-    if (result != null && result.isNotEmpty) {
-      if (!context.mounted) return [];
-      return await _processAssets(context, result, config);
-    }
-    return [];
-  }
-
-  static Future<List<HQPickerResult>> bottomSheets({
-    required BuildContext context,
-    required final int maxCount,
-    required final HQPickerRequestType requestType,
-    HQPickerConfig config = const HQPickerConfig(),
-    final Key? key,
-    final String confirmText = 'Send',
-    final String textEmptyList = 'No albums found.',
-    final Color? confirmButtonColor,
-    final Color confirmTextColor = Colors.black,
-    final Color? backgroundColor,
-    final Color? textEmptyListColor,
-    final Color? backgroundSnackBarColor,
-    final Color? dropdownColor,
-    final Widget iconCamera = const Icon(Icons.camera, color: Colors.black),
-    final TextStyle textStyleDropdown = const TextStyle(
-      fontSize: 18,
-      color: Colors.black,
-    ),
-    HQPickerCameraImageSettings? cameraImageSettings,
-  }) async {
-    final result = await showModalBottomSheet<List<AssetEntity>>(
-      context: context,
-      builder: (BuildContext context) {
-        return HQPickerBottomSheets(
-          maxCount: maxCount,
-          requestType: requestType,
-          backgroundColor: backgroundColor,
-          backgroundSnackBarColor: backgroundSnackBarColor,
-          confirmButtonColor: confirmButtonColor,
-          confirmText: confirmText,
-          confirmTextColor: confirmTextColor,
-          key: key,
-          textEmptyList: textEmptyList,
-          textEmptyListColor: textEmptyListColor,
-          dropdownColor: dropdownColor,
-          iconCamera: iconCamera,
-          textStyleDropdown: textStyleDropdown,
-          cameraImageSettings: cameraImageSettings,
-        );
-      },
-    );
-
-    if (result != null && result.isNotEmpty) {
-      if (!context.mounted) return [];
-      return await _processAssets(context, result, config);
-    }
-    return [];
-  }
-
-  static Future<List<HQPickerResult>> scaffoldBottomSheet({
-    required BuildContext context,
-    required int maxCount,
-    required HQPickerRequestType requestType,
-    HQPickerConfig config = const HQPickerConfig(),
-    String confirmText = 'Send',
-    String textEmptyList = 'No albums found.',
-    Color? confirmButtonColor,
-    Color confirmTextColor = Colors.black,
-    Color? backgroundColor,
-    Color? textEmptyListColor,
-    Color? backgroundSnackBarColor,
-    HQPickerCameraImageSettings? cameraImageSettings,
-  }) async {
-    final result = await showModalBottomSheet<List<AssetEntity>>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return HQPickerScaffoldBottomSheet(
-          maxCount: maxCount,
-          requestType: requestType,
-          confirmText: confirmText,
-          textEmptyList: textEmptyList,
-          confirmButtonColor: confirmButtonColor,
-          confirmTextColor: confirmTextColor,
-          backgroundColor: backgroundColor,
-          textEmptyListColor: textEmptyListColor,
-          backgroundSnackBarColor: backgroundSnackBarColor,
-          cameraImageSettings: cameraImageSettings,
-        );
-      },
-    );
-
-    if (result != null && result.isNotEmpty) {
-      if (!context.mounted) return [];
-      return await _processAssets(context, result, config);
-    }
-    return [];
-  }
-
-  static Future<List<HQPickerResult>> bottomSheetImageSelector({
-    required BuildContext context,
-    required int maxCount,
-    required HQPickerRequestType requestType,
-    HQPickerConfig config = const HQPickerConfig(),
-    String confirmText = 'Send',
-    String textEmptyList = 'No albums found.',
-    Color? confirmButtonColor,
-    Color confirmTextColor = Colors.black,
-    final Color? backgroundColor,
-    final Color? textEmptyListColor,
-    final Color? backgroundSnackBarColor,
-    final Color? dropdownColor,
-    final TextStyle textStyleDropdown = const TextStyle(
-      fontSize: 18,
-      color: Colors.black,
-    ),
-    final Widget iconCamera = const Icon(Icons.camera, color: Colors.black),
-    final Widget? loading,
-    HQPickerCameraImageSettings? cameraImageSettings,
-  }) async {
-    final result = await showModalBottomSheet<List<AssetEntity>>(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return HQPickerBottomSheetImageSelector(
-          maxCount: maxCount,
-          requestType: requestType,
-          confirmText: confirmText,
-          backgroundColor: backgroundColor,
-          backgroundSnackBarColor: backgroundSnackBarColor,
-          confirmButtonColor: confirmButtonColor,
-          confirmTextColor: confirmTextColor,
-          textEmptyList: textEmptyList,
-          textEmptyListColor: textEmptyListColor,
-          textStyleDropdown: textStyleDropdown,
-          dropdownColor: dropdownColor,
-          cameraImageSettings: cameraImageSettings,
-          iconCamera: iconCamera,
-          loading: loading,
-        );
-      },
-    );
-
-    if (result != null && result.isNotEmpty) {
-      if (!context.mounted) return [];
-      return await _processAssets(context, result, config);
-    }
-    return [];
-  }
 
   /// Displays the Telegram-style sliding media sheet modally.
   static Future<List<HQPickerResult>> telegram({
@@ -401,7 +207,6 @@ class HQPicker extends StatefulWidget {
     HQPickerRequestType requestType = HQPickerRequestType.all,
     HQPickerConfig config = const HQPickerConfig(),
     bool isRealCameraView = false,
-    Color? primeryColor,
   }) async {
     final Completer<List<HQPickerResult>> completer = Completer();
     final GlobalKey<HQPickerTelegramMediaPickersState> key = GlobalKey();
@@ -415,7 +220,7 @@ class HQPicker extends StatefulWidget {
           maxCountPickFiles: maxCount,
           requestType: requestType,
           isRealCameraView: isRealCameraView,
-          primeryColor: primeryColor ?? const Color(0xFF2C2C2C),
+          config: config,
           onMediaPicked: (assets, files) async {
             if (overlayEntry.mounted) {
               overlayEntry.remove();
@@ -486,38 +291,6 @@ class HQPicker extends StatefulWidget {
           config: config,
         );
 
-      case HQPickerShape.custom:
-        return await customPicker(
-          context: context,
-          maxCount: maxCount,
-          requestType: requestType,
-          config: config,
-        );
-
-      case HQPickerShape.bottomSheet:
-        return await bottomSheets(
-          context: context,
-          maxCount: maxCount,
-          requestType: requestType,
-          config: config,
-        );
-
-      case HQPickerShape.scaffoldBottomSheet:
-        return await scaffoldBottomSheet(
-          context: context,
-          maxCount: maxCount,
-          requestType: requestType,
-          config: config,
-        );
-
-      case HQPickerShape.bottomSheetImageSelector:
-        return await bottomSheetImageSelector(
-          context: context,
-          maxCount: maxCount,
-          requestType: requestType,
-          config: config,
-        );
-
       case HQPickerShape.telegram:
         return await telegram(
           context: context,
@@ -527,7 +300,7 @@ class HQPicker extends StatefulWidget {
         );
 
       case HQPickerShape.document:
-        return await HQPickerFilePicker.pickDocument(
+        return await _pickDocumentInline(
           context: context,
           shape: shape,
           allowedExtensions: allowedExtensions,
@@ -536,7 +309,7 @@ class HQPicker extends StatefulWidget {
         );
 
       case HQPickerShape.directory:
-        return await HQPickerFilePicker.pickDirectory(
+        return await _pickDirectoryInline(
           context: context,
           shape: shape,
           maxCount: maxCount,
@@ -560,10 +333,10 @@ class HQPicker extends StatefulWidget {
     );
   }
 
-  /// Picks videos using a specified [HQPickerShape] (defaults to [HQPickerShape.custom]).
+  /// Picks videos using a specified [HQPickerShape] (defaults to [HQPickerShape.telegram]).
   static Future<List<HQPickerResult>> pickVideo({
     required BuildContext context,
-    HQPickerShape shape = HQPickerShape.custom,
+    HQPickerShape shape = HQPickerShape.telegram,
     int maxCount = 1,
     HQPickerConfig config = const HQPickerConfig(),
   }) async {
@@ -584,7 +357,7 @@ class HQPicker extends StatefulWidget {
     int maxCount = 1,
     HQPickerConfig config = const HQPickerConfig(),
   }) async {
-    return await HQPickerFilePicker.pickDocument(
+    return await _pickDocumentInline(
       context: context,
       shape: shape,
       allowedExtensions: allowedExtensions,
@@ -598,12 +371,66 @@ class HQPicker extends StatefulWidget {
     BuildContext? context,
     HQPickerShape shape = HQPickerShape.directory,
   }) async {
-    return await HQPickerFilePicker.pickDirectory(
+    return await _pickDirectoryInline(
       context: context,
       shape: shape,
     );
   }
 
+  // ── Internal helpers (inlined from file_picker_service.dart) ──────────────
+
+  static Future<List<HQPickerResult>> _pickDocumentInline({
+    BuildContext? context,
+    HQPickerShape shape = HQPickerShape.document,
+    List<String>? allowedExtensions,
+    int maxCount = 1,
+    HQPickerConfig config = const HQPickerConfig(),
+  }) async {
+    if (shape == HQPickerShape.document) {
+      final XTypeGroup typeGroup = XTypeGroup(
+        label: 'documents',
+        extensions: allowedExtensions,
+      );
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+      if (file != null) {
+        return [HQPickerResult(file: File(file.path))];
+      }
+      return [];
+    }
+    if (context == null) {
+      throw ArgumentError('BuildContext context is required for shape $shape');
+    }
+    return await pick(
+      context: context,
+      shape: shape,
+      maxCount: maxCount,
+      requestType: HQPickerRequestType.all,
+      config: config,
+      allowedExtensions: allowedExtensions,
+    );
+  }
+
+  static Future<List<HQPickerResult>> _pickDirectoryInline({
+    BuildContext? context,
+    HQPickerShape shape = HQPickerShape.directory,
+    int maxCount = 1,
+  }) async {
+    if (shape == HQPickerShape.directory) {
+      final String? path = await getDirectoryPath();
+      if (path != null) {
+        return [HQPickerResult(file: File(path))];
+      }
+      return [];
+    }
+    if (context == null) {
+      throw ArgumentError('BuildContext context is required for shape $shape');
+    }
+    return await pick(
+      context: context,
+      shape: shape,
+      maxCount: maxCount,
+    );
+  }
 
   @override
   State<HQPicker> createState() => _HQPickerState();
@@ -615,18 +442,7 @@ class HQPicker extends StatefulWidget {
         builder: (context) => HQPicker(
           maxCount: maxCount,
           requestType: requestType,
-          appbarColor: appbarColor,
-          backBottomColor: backBottomColor,
-          iconCameraColor: iconCameraColor,
-          iconGalleryColor: iconGalleryColor,
-          iconSelectedListAlbumColor: iconSelectedListAlbumColor,
-          textSelectedListAssetColor: textSelectedListAssetColor,
-          backgroundDropDownColor: backgroundDropDownColor,
-          nullColorText: nullColorText,
-          textColor: textColor,
-          confirmText: confirmText,
-          confirmTextColor: confirmTextColor,
-          backgroundColor: backgroundColor,
+          config: config,
         ),
       ),
     );
@@ -662,36 +478,48 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
     super.dispose();
   }
 
-  Future<void> pickImage(ImageSource source) async {
+  Future<void> pickMedia(ImageSource source) async {
     try {
-      final pickedImageFile = await ImagePicker().pickImage(
-        source: source,
-        imageQuality: widget.cameraImageSettings?.imageQuality,
-        preferredCameraDevice:
-            widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
-        maxWidth: widget.cameraImageSettings?.maxWidth,
-        maxHeight: widget.cameraImageSettings?.maxHeight,
-      );
-
-      if (pickedImageFile != null) {
-        final imageFile = File(pickedImageFile.path);
-        _bloc.add(SetCapturedImageEvent(imageFile));
-
-        bool isSaved = await FlutterSaver.saveImageAndroid(fileImage: imageFile);
-        debugPrint('Image saved: $isSaved');
-
-        if (isSaved) {
-          _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
-        } else {
-          debugPrint('Error: Image was not saved.');
-        }
+      XFile? pickedFile;
+      if (widget.requestType == HQPickerRequestType.video) {
+        pickedFile = await ImagePicker().pickVideo(
+          source: source,
+          preferredCameraDevice:
+              widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
+        );
       } else {
-        debugPrint('Image selection cancelled.');
+        pickedFile = await ImagePicker().pickImage(
+          source: source,
+          imageQuality: widget.cameraImageSettings?.imageQuality,
+          preferredCameraDevice:
+              widget.cameraImageSettings?.preferredCameraDevice ?? CameraDevice.rear,
+          maxWidth: widget.cameraImageSettings?.maxWidth,
+          maxHeight: widget.cameraImageSettings?.maxHeight,
+        );
+      }
+
+      if (pickedFile != null) {
+        final mediaFile = File(pickedFile.path);
+        _bloc.add(SetCapturedImageEvent(mediaFile));
+
+        try {
+          if (widget.requestType != HQPickerRequestType.video) {
+            if (Platform.isAndroid) {
+              await FlutterSaver.saveImageAndroid(fileImage: mediaFile);
+            } else if (Platform.isIOS) {
+              await FlutterSaver.saveImageIos(fileImage: mediaFile);
+            }
+          }
+        } catch (e) {
+          debugPrint('Save to gallery error: $e');
+        }
+
+        _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
       }
     } on PlatformException catch (error) {
       debugPrint('PlatformException: $error');
     } catch (error) {
-      debugPrint('Error picking image: $error');
+      debugPrint('Error picking media: $error');
     }
   }
 
@@ -703,13 +531,18 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
       value: _bloc,
       child: SafeArea(
         child: Scaffold(
-          backgroundColor: widget.backgroundColor,
+          backgroundColor: widget.config.theme.backgroundColor,
           appBar: AppBar(
             elevation: 0,
-            backgroundColor: widget.appbarColor,
-            leading: const BackButton(color: Colors.white),
+            backgroundColor: widget.config.theme.appbarColor,
+            leading: BackButton(color: widget.config.theme.textColor),
             centerTitle: true,
-            title: widget.title,
+            title:
+                widget.title ??
+                Text(
+                  widget.config.localizations.gallery,
+                  style: widget.config.theme.resolvedAlbumNameTextStyle,
+                ),
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 15.0),
@@ -717,8 +550,8 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                   builder: (context, state) {
                     return InkResponse(
                       child: Text(
-                        widget.confirmText,
-                        style: TextStyle(color: widget.confirmTextColor),
+                        widget.config.localizations.confirm,
+                        style: widget.config.theme.resolvedConfirmButtonTextStyle,
                       ),
                       onTap: () {
                         List<AssetEntity> finalSelection = [];
@@ -731,16 +564,9 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                         if (finalSelection.isNotEmpty) {
                           Navigator.pop(context, finalSelection);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color.fromARGB(255, 39, 36, 36),
-                              margin: const EdgeInsets.all(15.0),
-                              behavior: SnackBarBehavior.floating,
-                              shape: BeveledRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                              content: const Text('No image selected'),
-                            ),
+                          widget.config.showSelectionError(
+                            context,
+                            widget.config.localizations.emptyList,
                           );
                         }
                       },
@@ -774,19 +600,21 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                                   thumbnailSize: const ThumbnailSize.square(250),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const Center(
-                                      child: Icon(Icons.error, color: Colors.red),
+                                    return Center(
+                                      child: IconTheme(
+                                        data: const IconThemeData(color: Colors.red),
+                                        child: widget.config.icons.error,
+                                      ),
                                     );
                                   },
                                 ),
                               ),
                               if (state.selectedEntity!.type == AssetType.video)
-                                const Positioned.fill(
+                                Positioned.fill(
                                   child: Center(
-                                    child: Icon(
-                                      Icons.play_arrow,
-                                      color: Colors.white,
-                                      size: 50.0,
+                                    child: IconTheme(
+                                      data: const IconThemeData(color: Colors.white, size: 50),
+                                      child: widget.config.icons.play,
                                     ),
                                   ),
                                 ),
@@ -812,19 +640,18 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                                       children: [
                                         Text(
                                           state.selectedAlbum!.name == 'Recent'
-                                              ? 'Gallery'
+                                              ? widget.config.localizations.recent
                                               : state.selectedAlbum!.name,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 20.0,
-                                            color: widget.textSelectedListAssetColor,
-                                          ),
+                                          style: widget.config.theme.resolvedAlbumNameTextStyle
+                                              .copyWith(fontSize: 20.0),
                                         ),
                                         Padding(
                                           padding: const EdgeInsets.only(left: 5.0),
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down_rounded,
-                                            color: widget.iconSelectedListAlbumColor,
+                                          child: IconTheme(
+                                            data: IconThemeData(
+                                              color: widget.config.theme.iconGalleryColor,
+                                            ),
+                                            child: widget.config.icons.dropdown,
                                           ),
                                         ),
                                       ],
@@ -836,18 +663,20 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                                 onPressed: () {
                                   _bloc.add(ToggleMultipleSelectionEvent());
                                 },
-                                icon: Icon(
-                                  state.isMultiple ? Icons.add_a_photo_outlined : Icons.add_a_photo,
-                                  color: widget.iconGalleryColor,
+                                icon: IconTheme(
+                                  data: IconThemeData(color: widget.config.theme.iconGalleryColor),
+                                  child: state.isMultiple
+                                      ? const Icon(Icons.add_a_photo_outlined)
+                                      : const Icon(Icons.add_a_photo),
                                 ),
                               ),
                               IconButton(
                                 onPressed: () async {
-                                  await pickImage(ImageSource.camera);
+                                  await pickMedia(ImageSource.camera);
                                 },
-                                icon: Icon(
-                                  Icons.camera,
-                                  color: widget.iconCameraColor,
+                                icon: IconTheme(
+                                  data: IconThemeData(color: widget.config.theme.iconCameraColor),
+                                  child: widget.config.icons.camera,
                                 ),
                               ),
                             ],
@@ -860,9 +689,7 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                                       ? widget.loading ?? const CircularProgressIndicator.adaptive()
                                       : Text(
                                           widget.textEmptyList,
-                                          style: TextStyle(
-                                            color: widget.nullColorText,
-                                          ),
+                                          style: widget.config.theme.resolvedEmptyListTextStyle,
                                         ),
                                 )
                               : NotificationListener<ScrollNotification>(
@@ -924,12 +751,8 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                 Navigator.pop(context);
               },
               title: Text(
-                album.name == 'Recent' ? 'Gallery' : album.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 18.0,
-                ),
+                album.name == 'Recent' ? widget.config.localizations.gallery : album.name,
+                style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(fontSize: 18.0),
               ),
             );
           },
@@ -940,65 +763,89 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
 
   Widget assetWidget(AssetEntity assetEntity, HQPickerState state) {
     final isSelected = state.selectedAssetList.contains(assetEntity);
-    return GestureDetector(
-      onTap: () {
-        _bloc.add(SelectEntityEvent(assetEntity));
-        if (!state.isMultiple) {
-          _bloc.add(SetSelectedAssetsEvent([assetEntity]));
-        }
-      },
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AssetEntityImage(
-              assetEntity,
-              isOriginal: false,
-              thumbnailSize: const ThumbnailSize.square(250),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(
-                  child: Icon(Icons.error, color: Colors.red),
-                );
-              },
-            ),
-          ),
-          if (assetEntity.type == AssetType.video)
-            const Positioned.fill(
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: Icon(Icons.video_library_outlined, color: Colors.red),
-                ),
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () {
+          _bloc.add(SelectEntityEvent(assetEntity));
+          if (!state.isMultiple) {
+            _bloc.add(SetSelectedAssetsEvent([assetEntity]));
+          }
+        },
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AssetEntityImage(
+                assetEntity,
+                isOriginal: false,
+                thumbnailSize: const ThumbnailSize.square(250),
+                thumbnailFormat: ThumbnailFormat.jpeg,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: IconTheme(
+                      data: const IconThemeData(color: Colors.red),
+                      child: widget.config.icons.error,
+                    ),
+                  );
+                },
               ),
             ),
-          Positioned.fill(
-            child: Container(
-              color: assetEntity == state.selectedEntity ? Colors.white60 : Colors.transparent,
-            ),
-          ),
-          if (state.isMultiple)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () {
-                  _bloc.add(ToggleAssetSelectionEvent(assetEntity, widget.maxCount));
-                },
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue : Colors.white12,
-                        shape: BoxShape.circle,
-                        border: Border.all(width: 1.5, color: Colors.white),
+            if (assetEntity.type == AssetType.video)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconTheme(
+                        data: const IconThemeData(color: Colors.white, size: 12),
+                        child: widget.config.icons.play,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          isSelected ? '${state.selectedAssetList.indexOf(assetEntity) + 1}' : '',
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.transparent,
+                      const SizedBox(width: 2),
+                      Text(
+                        _formatDuration(assetEntity.duration),
+                        style: widget.config.theme.resolvedVideoDurationTextStyle,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Positioned.fill(
+              child: Container(
+                color: assetEntity == state.selectedEntity ? Colors.white60 : Colors.transparent,
+              ),
+            ),
+            if (state.isMultiple)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {
+                    _bloc.add(ToggleAssetSelectionEvent(assetEntity, widget.maxCount));
+                  },
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? widget.config.theme.badgeBackgroundColor
+                              : Colors.white12,
+                          shape: BoxShape.circle,
+                          border: Border.all(width: 1.5, color: Colors.white),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            isSelected ? '${state.selectedAssetList.indexOf(assetEntity) + 1}' : '',
+                            style: widget.config.theme.resolvedBadgeTextStyle.copyWith(
+                              color: isSelected ? null : Colors.transparent,
+                            ),
                           ),
                         ),
                       ),
@@ -1006,10 +853,16 @@ class _HQPickerState extends State<HQPicker> with AutomaticKeepAliveClientMixin 
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
   }
 
   @override

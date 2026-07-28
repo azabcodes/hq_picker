@@ -1,3 +1,4 @@
+/// Configurable localized texts across HQPicker.
 class HQPickerLocalizations {
   final String confirm;
   final String cancel;
@@ -10,12 +11,15 @@ class HQPickerLocalizations {
   final String video;
   final String audio;
   final String file;
+  final String permissionRequired;
   final String permissionDenied;
   final String openSettings;
   final String crop;
+  final String recent;
+  final String all;
 
   const HQPickerLocalizations({
-    this.confirm = 'Confirm',
+    this.confirm = 'Send',
     this.cancel = 'Cancel',
     this.emptyList = 'No albums found',
     this.emptyListVideo = 'No videos found',
@@ -26,9 +30,12 @@ class HQPickerLocalizations {
     this.video = 'Videos',
     this.audio = 'Audios',
     this.file = 'Files',
+    this.permissionRequired = 'Permission Required',
     this.permissionDenied = 'Permission Denied. Please allow access from settings.',
     this.openSettings = 'Open Settings',
     this.crop = 'Crop Image',
+    this.recent = 'Recent',
+    this.all = 'All',
   });
 
   const HQPickerLocalizations.en() : this();
@@ -46,8 +53,51 @@ class HQPickerLocalizations {
         video: 'الفيديوهات',
         audio: 'الصوتيات',
         file: 'الملفات',
+        permissionRequired: 'مطلوب إذن',
         permissionDenied: 'تم رفض الصلاحية. يرجى السماح للوصول من الإعدادات.',
         openSettings: 'فتح الإعدادات',
         crop: 'قص الصورة',
+        recent: 'الأحدث',
+        all: 'الكل',
       );
+
+  HQPickerLocalizations copyWith({
+    String? confirm,
+    String? cancel,
+    String? emptyList,
+    String? emptyListVideo,
+    String? emptyListAudio,
+    String? emptyListFile,
+    String? gallery,
+    String? camera,
+    String? video,
+    String? audio,
+    String? file,
+    String? permissionRequired,
+    String? permissionDenied,
+    String? openSettings,
+    String? crop,
+    String? recent,
+    String? all,
+  }) {
+    return HQPickerLocalizations(
+      confirm: confirm ?? this.confirm,
+      cancel: cancel ?? this.cancel,
+      emptyList: emptyList ?? this.emptyList,
+      emptyListVideo: emptyListVideo ?? this.emptyListVideo,
+      emptyListAudio: emptyListAudio ?? this.emptyListAudio,
+      emptyListFile: emptyListFile ?? this.emptyListFile,
+      gallery: gallery ?? this.gallery,
+      camera: camera ?? this.camera,
+      video: video ?? this.video,
+      audio: audio ?? this.audio,
+      file: file ?? this.file,
+      permissionRequired: permissionRequired ?? this.permissionRequired,
+      permissionDenied: permissionDenied ?? this.permissionDenied,
+      openSettings: openSettings ?? this.openSettings,
+      crop: crop ?? this.crop,
+      recent: recent ?? this.recent,
+      all: all ?? this.all,
+    );
+  }
 }

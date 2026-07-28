@@ -3,23 +3,20 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import 'bloc/hq_picker_bloc.dart';
-import 'bloc/hq_picker_event.dart';
-import 'bloc/hq_picker_state.dart';
-import 'tools/media_services.dart';
-import 'tools/theme_generator.dart';
-import 'widget/global/camera_image_setting.dart';
-import 'widget/telegram/audio_telegram_widget.dart';
-import 'widget/telegram/defult_builder_widget.dart';
-import 'widget/telegram/file_device_widget.dart';
-import 'widget/telegram/video_telegram_widget.dart';
+import 'core/bloc/hq_picker_bloc.dart';
+import 'core/bloc/hq_picker_event.dart';
+import 'core/bloc/hq_picker_state.dart';
+import 'core/components/camera_image_setting.dart';
+import 'core/components/defult_builder_widget.dart';
+import 'core/config/hq_picker_config.dart';
+import 'core/tools/media_services.dart';
+import 'core/tools/theme_generator.dart';
 
-export 'widget/global/camera_image_setting.dart';
+export 'core/components/camera_image_setting.dart';
 
 late ThemeData theme;
 
@@ -46,30 +43,36 @@ class HQPickerTelegramMediaPickers extends StatefulWidget {
   final OnMediaPicked? onMediaPicked;
   final int maxCountPickFiles;
   final HQPickerCameraImageSettings? cameraImageSettings;
+  final HQPickerConfig config;
 
-  const HQPickerTelegramMediaPickers({
+  HQPickerTelegramMediaPickers({
     super.key,
     required this.maxCountPickMedia,
     this.requestType = HQPickerRequestType.all,
     this.isRealCameraView = true,
-    this.textEmptyListVideo = 'No video found.',
-    this.textEmptyList = 'No albums found.',
-    this.textEmptyListFile = 'No files found.',
-    this.textEmptyListAudio = 'No audio found.',
+    this.config = const HQPickerConfig(),
+    String? textEmptyListVideo,
+    String? textEmptyList,
+    String? textEmptyListFile,
+    String? textEmptyListAudio,
     this.confirmTextColor = Colors.black,
     this.backgroundColor,
     this.confirmButtonColor,
     this.textEmptyListColor,
     this.backgroundSnackBarColor,
     this.dropdownColor,
-    this.primeryColor = const Color(0xFF2C2C2C),
+    this.primeryColor,
     this.onMediaPicked,
     this.maxCountPickFiles = 5,
     this.cameraImageSettings,
     this.textStyleEmptyListText = const TextStyle(color: Colors.grey, fontSize: 18),
-    this.iconCamera = const Icon(Icons.camera, color: Colors.black),
+    Widget? iconCamera,
     this.loading,
-  });
+  }) : textEmptyListVideo = textEmptyListVideo ?? config.localizations.emptyListVideo,
+       textEmptyList = textEmptyList ?? config.localizations.emptyList,
+       textEmptyListFile = textEmptyListFile ?? config.localizations.emptyListFile,
+       textEmptyListAudio = textEmptyListAudio ?? config.localizations.emptyListAudio,
+       iconCamera = iconCamera ?? config.icons.camera;
 
   @override
   State<HQPickerTelegramMediaPickers> createState() => HQPickerTelegramMediaPickersState();
@@ -93,7 +96,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
       _bloc.add(UpdateScrollSizeEvent(_controller.size));
     });
 
-    primaryColor = widget.primeryColor ?? const Color(0xFF2C2C2C);
+    primaryColor = widget.primeryColor ?? widget.config.theme.primaryColor;
     theme = HQPickerThemeGenerator.generateTheme(primaryColor: primaryColor);
   }
 
@@ -162,55 +165,9 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                             minChildSize: 0.2,
                             maxChildSize: 1.0,
                             builder: (context, scrollController) {
-                              return BlocBuilder<HQPickerBloc, HQPickerState>(
-                                buildWhen: (previous, current) {
-                                  return previous.isFile != current.isFile ||
-                                      previous.isVideo != current.isVideo ||
-                                      previous.isAudio != current.isAudio;
-                                },
-                                builder: (context, state) {
-                                  if (state.isFile) {
-                                    return HQPickerFileListScreen(
-                                      scrollController: scrollController,
-                                      overlayEntry: _overlayEntry!,
-                                      maxCountPickFiles: widget.maxCountPickFiles,
-                                      textEmptyListFile: widget.textEmptyListFile,
-                                      textStyleEmptyListText: widget.textStyleEmptyListText,
-                                      toggleSheet: () => toggleSheet(parentContext),
-                                      onFilesSelected: (assets, selectedFiles) {
-                                        widget.onMediaPicked?.call(null, selectedFiles);
-                                      },
-                                    );
-                                  } else if (state.isVideo) {
-                                    return HQPickerVideoOnlyPage(
-                                      widget: widget,
-                                      controller: scrollController,
-                                      maxCountPickFiles: widget.maxCountPickFiles,
-                                      overlayEntry: _overlayEntry!,
-                                      toggleSheet: () => toggleSheet(parentContext),
-                                      onFilesSelected: (assets, selectedFiles) {
-                                        widget.onMediaPicked?.call(assets, null);
-                                      },
-                                    );
-                                  } else if (state.isAudio) {
-                                    return HQPickerAudioTelegramWidget(
-                                      scrollController: scrollController,
-                                      maxCountPickFiles: widget.maxCountPickFiles,
-                                      overlayEntry: _overlayEntry!,
-                                      textEmptyListAudio: widget.textEmptyListAudio,
-                                      textStyleEmptyListText: widget.textStyleEmptyListText,
-                                      toggleSheet: () => toggleSheet(parentContext),
-                                      onFilesSelected: (assets, selectedFiles) {
-                                        widget.onMediaPicked?.call(null, selectedFiles);
-                                      },
-                                    );
-                                  } else {
-                                    return HQPickerDefultBuilderWidget(
-                                      widget: widget,
-                                      controller: scrollController,
-                                    );
-                                  }
-                                },
+                              return HQPickerDefultBuilderWidget(
+                                widget: widget,
+                                controller: scrollController,
                               );
                             },
                           ),
@@ -240,9 +197,9 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                       children: [
                                         IconButton(
                                           onPressed: () => toggleSheet(parentContext),
-                                          icon: Icon(
-                                            Icons.arrow_back_ios_new,
-                                            color: theme.colorScheme.onPrimary,
+                                          icon: IconTheme(
+                                            data: IconThemeData(color: theme.colorScheme.onPrimary),
+                                            child: widget.config.icons.back,
                                           ),
                                         ),
                                         const SizedBox(width: 15),
@@ -251,7 +208,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                             final albumName =
                                                 (state.selectedAlbum != null &&
                                                     state.selectedAlbum!.name == 'Recent')
-                                                ? 'Gallery'
+                                                ? widget.config.localizations.gallery
                                                 : (state.selectedAlbum?.name ?? '');
                                             return InkWell(
                                               onTap: () {
@@ -263,77 +220,20 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                                 children: [
                                                   Text(
                                                     albumName,
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 22.0,
-                                                    ),
+                                                    style: widget.config.theme.resolvedAlbumNameTextStyle,
                                                   ),
                                                   const SizedBox(width: 5),
-                                                  Icon(
-                                                    Icons.keyboard_arrow_down_sharp,
-                                                    color: theme.colorScheme.onPrimary,
-                                                    size: 28,
+                                                  IconTheme(
+                                                    data: IconThemeData(
+                                                      color: theme.colorScheme.onPrimary,
+                                                      size: 28,
+                                                    ),
+                                                    child: widget.config.icons.dropdown,
                                                   ),
                                                 ],
                                               ),
                                             );
                                           },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-
-                        // Bottom bar
-                        BlocSelector<HQPickerBloc, HQPickerState, double>(
-                          selector: (state) => state.scrollSize,
-                          builder: (context, size) {
-                            final showBottomBar = size < 0.9;
-                            return Positioned(
-                              bottom: 0,
-                              right: 0,
-                              left: 0,
-                              child: AnimatedOpacity(
-                                opacity: showBottomBar ? 1.0 : 0.0,
-                                duration: const Duration(milliseconds: 300),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  height: showBottomBar
-                                      ? MediaQuery.of(context).size.height * 0.095
-                                      : 0,
-                                  color: theme.primaryColor,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        _buildBottomBarItem(
-                                          context,
-                                          CupertinoIcons.doc,
-                                          'File',
-                                          isFile: true,
-                                          isVideo: false,
-                                          isAudio: false,
-                                        ),
-                                        _buildBottomBarItem(
-                                          context,
-                                          CupertinoIcons.film,
-                                          'Video',
-                                          isFile: false,
-                                          isVideo: true,
-                                          isAudio: false,
-                                        ),
-                                        _buildBottomBarItem(
-                                          context,
-                                          CupertinoIcons.music_albums_fill,
-                                          'Audio',
-                                          isFile: false,
-                                          isVideo: false,
-                                          isAudio: true,
                                         ),
                                       ],
                                     ),
@@ -355,35 +255,9 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
     );
   }
 
-  Widget _buildBottomBarItem(
-    BuildContext context,
-    IconData icon,
-    String label, {
-    required bool isFile,
-    required bool isVideo,
-    required bool isAudio,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          _bloc.add(SetMediaTypeEvent(isFile: isFile, isVideo: isVideo, isAudio: isAudio));
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(icon, color: theme.colorScheme.onPrimary, size: 28),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 14.0)),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showAlbumSelector(BuildContext parentContext, HQPickerBloc bloc) {
     OverlayEntry? albumOverlayEntry;
-    ScrollController controller = ScrollController();
+    final controller = ScrollController();
 
     albumOverlayEntry = OverlayEntry(
       builder: (context) => BlocProvider.value(
@@ -409,80 +283,84 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                     top: 50,
                     child: GestureDetector(
                       onTap: () {},
-                      child: Container(
+                      child: SizedBox(
                         width: 320,
                         height: MediaQuery.of(context).size.height * 0.85,
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 15.0),
-                          child: BlocBuilder<HQPickerBloc, HQPickerState>(
-                            builder: (context, state) {
-                              return ListView.builder(
-                                controller: controller,
-                                physics: const BouncingScrollPhysics(),
-                                itemCount: state.albumList.length,
-                                itemBuilder: (context, index) {
-                                  final album = state.albumList[index];
-                                  final count = state.albumFileCounts.length > index
-                                      ? state.albumFileCounts[index]
-                                      : 0;
-                                  final firstImage = state.albumFirstImages.length > index
-                                      ? state.albumFirstImages[index]
-                                      : null;
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: theme.primaryColor,
+                            borderRadius: BorderRadius.circular(10),
+                            clipBehavior: Clip.antiAlias,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 15.0),
+                              child: BlocBuilder<HQPickerBloc, HQPickerState>(
+                                builder: (context, state) {
+                                  return ListView.builder(
+                                    controller: controller,
+                                    physics: const BouncingScrollPhysics(),
+                                    itemCount: state.albumList.length,
+                                    itemBuilder: (context, index) {
+                                      final album = state.albumList[index];
+                                      final count = state.albumFileCounts.length > index
+                                          ? state.albumFileCounts[index]
+                                          : 0;
+                                      final firstImage = state.albumFirstImages.length > index
+                                          ? state.albumFirstImages[index]
+                                          : null;
 
-                                  return ListTile(
-                                    onTap: () {
-                                      bloc.add(ChangeAlbumEvent(album));
-                                      albumOverlayEntry?.remove();
+                                      return ListTile(
+                                        onTap: () {
+                                          bloc.add(ChangeAlbumEvent(album));
+                                          albumOverlayEntry?.remove();
+                                        },
+                                        title: Row(
+                                          children: [
+                                            if (firstImage != null)
+                                              ImageFiltered(
+                                                imageFilter: ImageFilter.blur(
+                                                  sigmaX: 1.0,
+                                                  sigmaY: 1.0,
+                                                ),
+                                                child: Image(
+                                                  fit: BoxFit.cover,
+                                                  image: MemoryImage(firstImage),
+                                                  width: 25,
+                                                  height: 25,
+                                                ),
+                                              ),
+                                            Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(left: 15.0),
+                                                child: Text(
+                                                  album.name == 'Recent' ? widget.config.localizations.gallery : album.name,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(fontSize: 16.0),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '$count',
+                                              style: widget.config.theme.resolvedAlbumCountTextStyle,
+                                            ),
+                                          ],
+                                        ),
+                                      );
                                     },
-                                    title: Row(
-                                      children: [
-                                        if (firstImage != null)
-                                          ImageFiltered(
-                                            imageFilter: ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
-                                            child: Image(
-                                              fit: BoxFit.cover,
-                                              image: FileImage(firstImage),
-                                              width: 25,
-                                              height: 25,
-                                            ),
-                                          ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 15.0),
-                                          child: Text(
-                                            album.name == 'Recent' ? 'Gallery' : album.name,
-                                            style: TextStyle(
-                                              color: theme.colorScheme.onPrimary,
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 16.0,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '$count',
-                                          style: TextStyle(
-                                            color: theme.primaryColorLight,
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: theme.textTheme.bodySmall?.fontSize,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
                                   );
                                 },
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
                       ),

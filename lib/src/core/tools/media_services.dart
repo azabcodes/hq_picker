@@ -9,7 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../config/hq_picker_config.dart';
-import 'extension/extensions_telegram_picker.dart';
+import '../extension/extensions_telegram_picker.dart';
 
 enum HQPickerRequestType { common, audio, image, video, all }
 
@@ -29,6 +29,23 @@ RequestType _mapRequestType(HQPickerRequestType requestType) {
 }
 
 class HQPickerMediaServices {
+  static final List<String> _restrictedAndroidDirectories = [
+    '/data',
+    '/storage/emulated/0/Android/data',
+    '/storage/emulated/0/Android/obb',
+  ];
+
+  static bool _isRestrictedAndroidDirectory(String directory) {
+    if (!Platform.isAndroid) return false;
+
+    final normalizedDirectory = path.normalize(directory);
+    return _restrictedAndroidDirectories.any((restrictedDirectory) {
+      final normalizedRestrictedDirectory = path.normalize(restrictedDirectory);
+      return normalizedDirectory == normalizedRestrictedDirectory ||
+          path.isWithin(normalizedRestrictedDirectory, normalizedDirectory);
+    });
+  }
+
   static Future<bool> requestPermissions(
     BuildContext context,
     HQPickerConfig config,
@@ -46,19 +63,19 @@ class HQPickerMediaServices {
         builder: (ctx) => AlertDialog(
           backgroundColor: config.theme.backgroundColor,
           title: Text(
-            'Permission Required',
-            style: TextStyle(color: config.theme.textColor),
+            config.localizations.permissionRequired,
+            style: config.theme.resolvedDialogTitleTextStyle,
           ),
           content: Text(
             config.localizations.permissionDenied,
-            style: TextStyle(color: config.theme.textColor),
+            style: config.theme.resolvedDialogContentTextStyle,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 config.localizations.cancel,
-                style: TextStyle(color: config.theme.textColor),
+                style: config.theme.resolvedDialogCancelTextStyle,
               ),
             ),
             TextButton(
@@ -68,7 +85,7 @@ class HQPickerMediaServices {
               },
               child: Text(
                 config.localizations.openSettings,
-                style: TextStyle(color: config.theme.confirmButtonColor),
+                style: config.theme.resolvedDialogConfirmTextStyle,
               ),
             ),
           ],
@@ -133,7 +150,7 @@ class HQPickerMediaServices {
           }
         } else if (entity is Directory) {
           final dirName = path.basename(entity.path);
-          if (!dirName.startsWith('.')) {
+          if (!dirName.startsWith('.') && !_isRestrictedAndroidDirectory(entity.path)) {
             files.addAll(await _getFilesRecursively(entity, allowedExtensions));
           }
         }
@@ -155,7 +172,7 @@ class HQPickerMediaServices {
         String? directory = dirType;
         if (directory != null) {
           Directory dir = Directory(directory);
-          if (await dir.exists()) {
+          if (!_isRestrictedAndroidDirectory(dir.path) && await dir.exists()) {
             allFiles.addAll(await _getFilesRecursively(dir, allowedExtensions));
           }
         }

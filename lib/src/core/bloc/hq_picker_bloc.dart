@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -137,18 +138,20 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
       }
 
       List<int> fileCounts = [];
-      List<File?> firstImages = [];
+      List<Uint8List?> firstImages = [];
 
       if (event.fetchFileCounts) {
         for (var album in albums) {
-          final assets = await HQPickerMediaServices.loadAssets(album);
-          fileCounts.add(assets.length);
-          if (assets.isNotEmpty) {
-            final file = await assets.first.file;
-            firstImages.add(file);
-          } else {
-            firstImages.add(null);
+          final count = await album.assetCountAsync;
+          fileCounts.add(count);
+          Uint8List? firstImageBytes;
+          final firstAssets = await album.getAssetListRange(start: 0, end: 1);
+          if (firstAssets.isNotEmpty) {
+            firstImageBytes = await firstAssets.first.thumbnailDataWithSize(
+              const ThumbnailSize.square(100),
+            );
           }
+          firstImages.add(firstImageBytes);
         }
       }
 

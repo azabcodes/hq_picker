@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -19,7 +20,7 @@ class HQPickerState extends Equatable {
   final int pageSize;
 
   final List<int> albumFileCounts;
-  final List<File?> albumFirstImages;
+  final List<Uint8List?> albumFirstImages;
 
   final String? errorMessage;
   final File? capturedImage;
@@ -73,7 +74,7 @@ class HQPickerState extends Equatable {
     bool? hasMore,
     int? pageSize,
     List<int>? albumFileCounts,
-    List<File?>? albumFirstImages,
+    List<Uint8List?>? albumFirstImages,
     String? errorMessage,
     File? Function()? capturedImage,
     bool? isDraggableOpen,
