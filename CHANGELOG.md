@@ -1,3 +1,11 @@
+## 0.0.5
+
+### Fixed
+- Telegram-style picker (`HQPicker.telegram`): selected media no longer
+  gets cleared when switching albums. Users can now select items across
+  multiple albums and have them all included when confirming, matching
+  Telegram's native picker behavior.
+
 ## 0.0.4
 
 ### ✨ New Features

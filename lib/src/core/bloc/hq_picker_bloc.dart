@@ -18,6 +18,7 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
     on<SetSelectedAssetsEvent>(_onSetSelectedAssets);
     on<SetCapturedImageEvent>(_onSetCapturedImage);
     on<ToggleMultipleSelectionEvent>(_onToggleMultipleSelection);
+    on<InitMultipleSelectionEvent>(_onInitMultipleSelection);
     on<ToggleSheetEvent>(_onToggleSheet);
     on<SetMediaTypeEvent>(_onSetMediaType);
     on<UpdateScrollSizeEvent>(_onUpdateScrollSize);
@@ -185,6 +186,11 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
         hasMore: true,
         isLoadingMore: false,
         status: HQPickerStatus.loading,
+        // Selections are intentionally preserved when switching albums so the
+        // user can pick items across multiple albums in one session.
+
+        // selectedAssetList: [],
+        // selectedFiles: [],
       ),
     );
 
@@ -271,5 +277,10 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
         selectedAssetList: [], // Clear selection when toggling
       ),
     );
+  }
+
+  void _onInitMultipleSelection(InitMultipleSelectionEvent event, Emitter<HQPickerState> emit) {
+    // Set isMultiple based on maxCount without clearing any existing selections
+    emit(state.copyWith(isMultiple: event.isMultiple));
   }
 }

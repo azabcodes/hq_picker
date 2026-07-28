@@ -132,3 +132,14 @@ class LoadDeviceFilesEvent extends HQPickerEvent {
 }
 
 class ToggleMultipleSelectionEvent extends HQPickerEvent {}
+
+/// Sets [isMultiple] directly (used at picker initialization based on maxCount).
+/// Unlike [ToggleMultipleSelectionEvent], this does NOT clear the selected assets.
+class InitMultipleSelectionEvent extends HQPickerEvent {
+  final bool isMultiple;
+
+  const InitMultipleSelectionEvent({required this.isMultiple});
+
+  @override
+  List<Object?> get props => [isMultiple];
+}

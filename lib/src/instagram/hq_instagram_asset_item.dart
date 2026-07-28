@@ -37,7 +37,11 @@ class HQAssetItem extends StatelessWidget {
       child: GestureDetector(
         onTap: () {
           bloc.add(SelectEntityEvent(assetEntity));
-          if (!state.isMultiple) {
+          if (state.isMultiple) {
+            // In multi-select mode, tap toggles the asset in selectedAssetList
+            bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+          } else {
+            // In single-select mode, just set the single selected asset
             bloc.add(SetSelectedAssetsEvent([assetEntity]));
           }
         },

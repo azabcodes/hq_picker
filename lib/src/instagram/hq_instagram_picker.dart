@@ -18,6 +18,9 @@ import '../core/bloc/hq_picker_state.dart';
 /// Shows a large preview on top and a 4-column asset grid below.
 /// Use [HQPicker.instagramPicker] or [HQPicker.pick] instead of
 /// instantiating this widget directly.
+///
+/// Multi-select mode is determined automatically: if [maxCount] > 1, multi-select
+/// is enabled; otherwise single-select mode is used.
 class HQInstagramPicker extends StatefulWidget {
   final int maxCount;
   final HQPickerRequestType requestType;
@@ -53,13 +56,17 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
   void initState() {
     super.initState();
     _bloc = HQPickerBloc()
-      ..add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
+      ..add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false))
+      ..add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
   }
 
   @override
   void didUpdateWidget(covariant HQInstagramPicker oldWidget) {
     if (oldWidget.requestType != widget.requestType) {
       _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
+    }
+    if (oldWidget.maxCount != widget.maxCount) {
+      _bloc.add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -258,20 +265,6 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                   ),
                                 ),
                               const Spacer(),
-                              // ── Multi-select toggle ───────────────────────
-                              IconButton(
-                                onPressed: () {
-                                  _bloc.add(ToggleMultipleSelectionEvent());
-                                },
-                                icon: IconTheme(
-                                  data: IconThemeData(
-                                    color: widget.config.theme.iconGalleryColor,
-                                  ),
-                                  child: state.isMultiple
-                                      ? const Icon(Icons.check_box)
-                                      : const Icon(Icons.check_box_outline_blank),
-                                ),
-                              ),
 
                               // ── Camera buttons (conditional on requestType) ─
                               if (widget.requestType == HQPickerRequestType.image ||
