@@ -7,16 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import 'core/bloc/hq_picker_bloc.dart';
-import 'core/bloc/hq_picker_event.dart';
-import 'core/bloc/hq_picker_state.dart';
-import 'core/components/camera_image_setting.dart';
-import 'core/components/defult_builder_widget.dart';
-import 'core/config/hq_picker_config.dart';
-import 'core/tools/media_services.dart';
-import 'core/tools/theme_generator.dart';
+import '../core/bloc/hq_picker_bloc.dart';
+import '../core/bloc/hq_picker_event.dart';
+import '../core/bloc/hq_picker_state.dart';
+import '../core/components/camera_image_setting.dart';
+import '../core/components/defult_builder_widget.dart';
+import '../core/config/hq_picker_config.dart';
+import '../core/tools/media_services.dart';
+import '../core/tools/theme_generator.dart';
 
-export 'core/components/camera_image_setting.dart';
+export '../core/components/camera_image_setting.dart';
 
 late ThemeData theme;
 
@@ -220,7 +220,10 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                                 children: [
                                                   Text(
                                                     albumName,
-                                                    style: widget.config.theme.resolvedAlbumNameTextStyle,
+                                                    style: widget
+                                                        .config
+                                                        .theme
+                                                        .resolvedAlbumNameTextStyle,
                                                   ),
                                                   const SizedBox(width: 5),
                                                   IconTheme(
@@ -342,16 +345,23 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                               child: Padding(
                                                 padding: const EdgeInsets.only(left: 15.0),
                                                 child: Text(
-                                                  album.name == 'Recent' ? widget.config.localizations.gallery : album.name,
+                                                  album.name == 'Recent'
+                                                      ? widget.config.localizations.gallery
+                                                      : album.name,
                                                   overflow: TextOverflow.ellipsis,
-                                                  style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(fontSize: 16.0),
+                                                  style: widget
+                                                      .config
+                                                      .theme
+                                                      .resolvedAlbumNameTextStyle
+                                                      .copyWith(fontSize: 16.0),
                                                 ),
                                               ),
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
                                               '$count',
-                                              style: widget.config.theme.resolvedAlbumCountTextStyle,
+                                              style:
+                                                  widget.config.theme.resolvedAlbumCountTextStyle,
                                             ),
                                           ],
                                         ),

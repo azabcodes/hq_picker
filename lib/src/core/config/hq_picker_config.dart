@@ -43,6 +43,18 @@ class HQPickerConfig {
   /// ```
   final HQPickerSnackBarBuilder? onSnackBar;
 
+  /// Widget shown as an overlay while assets are being processed
+  /// (cropping / compression). Defaults to a centered
+  /// [CircularProgressIndicator].
+  ///
+  /// Example:
+  /// ```dart
+  /// loadingWidget: Center(
+  ///   child: MyCustomSpinner(),
+  /// ),
+  /// ```
+  final Widget? loadingWidget;
+
   const HQPickerConfig({
     this.theme = const HQPickerTheme(),
     this.localizations = const HQPickerLocalizations(),
@@ -52,6 +64,7 @@ class HQPickerConfig {
     this.compressQuality = 80,
     this.showSnackBar = true,
     this.onSnackBar,
+    this.loadingWidget,
   });
 
   /// Shows the notification (snack-bar or custom toast) to the user.

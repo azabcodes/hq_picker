@@ -1,4 +1,43 @@
+## 0.0.4
+
+### ✨ New Features
+
+#### Full Text-Style Theming via `HQPickerTheme`
+* Every `Text` widget in the picker now reads its style from `HQPickerTheme` — no more hardcoded inline `TextStyle`.
+* New named style properties: `albumNameTextStyle`, `albumCountTextStyle`, `confirmButtonTextStyle`, `badgeTextStyle`, `videoDurationTextStyle`, `emptyListTextStyle`, `dialogTitleTextStyle`, `dialogContentTextStyle`, `dialogCancelTextStyle`, `dialogConfirmTextStyle`, `snackBarTextStyle`.
+* Each property has a `resolved*` getter that falls back to a sensible colour-based default if not provided.
+
+#### Localization — `permissionRequired` string
+* Added `permissionRequired` field to `HQPickerLocalizations` (default: `'Permission Required'`, Arabic: `'مطلوب إذن'`).
+* The permission dialog title now reads from `config.localizations.permissionRequired` instead of a hardcoded string.
+
+#### Custom Loading Widget
+* Added `loadingWidget` to `HQPickerConfig` — shown as an overlay while assets are being processed (cropped / compressed).
+* Defaults to `Center(child: CircularProgressIndicator())`.
+
+#### Conditional Camera Buttons in Instagram Picker
+* The Instagram picker toolbar now shows camera buttons only for the active `requestType`:
+  * `image` → photo camera button only.
+  * `video` → video camera button only.
+  * `all` → both buttons.
+* Added `cameraVideo` icon to `HQPickerIcons` (default: `Icons.videocam`) for the video camera button.
+* Multi-select toggle icon changed from `add_a_photo` (looked like a camera) to `check_box` / `check_box_outline_blank`.
+
+### 🏗️ Architecture
+
+#### File Split — `hq_picker.dart` is now a clean facade
+* Extracted `HQInstagramPicker` widget + `_HQInstagramPickerState` → `src/instagram/hq_instagram_picker.dart`.
+* Extracted grid-cell widget → `src/instagram/hq_instagram_asset_item.dart` (`HQAssetItem`).
+* Extracted `processAssets`, `pickDocument`, `pickDirectory` → `src/core/hq_picker_processor.dart` (`HQPickerProcessor`).
+* `hq_picker.dart` is now a pure static-API facade (~220 lines) — no widget code, no inline logic.
+* Removed `src/file_picker_service.dart` — logic inlined into `HQPickerProcessor`.
+
+### 🔧 Fixes & Improvements
+* `HQPicker.title` is now `Widget?` (nullable); when `null`, defaults to `config.localizations.gallery` styled with `resolvedAlbumNameTextStyle`.
+* Album selector bottom-sheet background uses `config.theme.backgroundDropDownColor` instead of a hardcoded colour.
+
 ## 0.0.3
+
 
 ### 🔧 Android Build Compatibility
 * **Gradle wrapper** upgraded from `8.12` → `8.14.1` (satisfies Flutter's upcoming minimum requirement).

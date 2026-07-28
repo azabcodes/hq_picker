@@ -1,51 +1,51 @@
 # HQPicker
 
-A high-performance, fully customizable, and multi-mode media picker for Flutter, entirely powered by the **BLoC pattern**. HQPicker ensures 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
+A high-performance, fully customizable, multi-mode media picker for Flutter — powered by the **BLoC pattern**. HQPicker delivers 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
 
-##  Features
+---
 
-- **BLoC Architecture**: Zero `setState` inside the core picker! Optimized for fast rebuilds and scalability.
-- **Unified `HQPickerShape` API**: Choose any UI style/shape (`instagram`, `telegram`, `custom`, `bottomSheet`, `scaffoldBottomSheet`, `bottomSheetImageSelector`, `document`, `directory`) using a single enum!
-- **Pagination Built-in**: Lazy-loads images/videos in chunks of 60 to prevent memory leaks and freezing.
-- **Multiple UI Shapes & Modes**:
-  -  **Instagram Style**: Full-page preview with grid selection.
-  -  **Telegram Style**: Draggable bottom sheet with tabs for Media, Audio, and Files.
-  -  **Custom Picker / Scaffold Bottom Sheet**: Highly customizable simple pickers.
-  -  **Document & Folder Picker**: Native system dialogs for files and directories.
-- **File System Support**: Natively fetches and filters Audio (`.mp3`, `.wav`, etc.) and general Files from the device.
-- **Cropping & Compression**: Built-in support for editing images before returning them.
-- **Localization**: Supports multiple languages (English, Arabic, etc.) via Dependency Injection.
+## ✨ Features
+
+- **BLoC Architecture** — Zero `setState` inside the picker core. Optimized for fast rebuilds and scalability.
+- **Two Beautiful Picker Styles** — Instagram full-screen preview + Telegram draggable bottom sheet.
+- **Unified `HQPicker` API** — One entry-point for all shapes: `instagram`, `telegram`, `document`, `directory`.
+- **Conditional Camera Buttons** — In the Instagram picker the camera / video-camera buttons are shown only when the `requestType` supports them.
+- **Pagination Built-in** — Lazy-loads media in chunks of 60 to prevent memory leaks and freezing.
+- **Full Text-Style Theming** — Every `Text` widget in the picker (badge, album name, video duration, dialog, snack-bar…) is individually styleable via `HQPickerTheme`.
+- **Cropping & Compression** — Built-in image editing with adjustable quality, shown behind a configurable loading overlay.
+- **Localization** — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations`.
+- **Custom SnackBar / Toast** — Provide `onSnackBar` to replace the built-in SnackBar with any toast/overlay you prefer.
+- **File System Support** — Native document and directory pickers via `file_selector`.
 
 ---
 
 ## 🚀 Getting Started
 
-You can install the package directly from your terminal:
 ```bash
 flutter pub add hq_picker
 ```
 
 Or add it manually to your `pubspec.yaml`:
+
 ```yaml
 dependencies:
-  hq_picker: ^0.0.2
+  hq_picker: ^0.0.4
 ```
 
-Import it in your Dart code:
+Import in your Dart code:
+
 ```dart
 import 'package:hq_picker/hq_picker.dart';
 ```
 
 ---
 
-## 📱 Usage Examples
+## 📱 Usage
 
-### 1. Unified `HQPickerShape` API (Recommended)
-
-You can launch any picker shape using `HQPicker.pick(...)` or `HQPickerFilePicker.pick(...)`:
+### 1. Unified `HQPicker.pick(...)` — recommended
 
 ```dart
-// Launch Instagram shape
+// Instagram style (full-screen)
 final results = await HQPicker.pick(
   context: context,
   shape: HQPickerShape.instagram,
@@ -53,104 +53,200 @@ final results = await HQPicker.pick(
   requestType: HQPickerRequestType.image,
 );
 
-// Launch Telegram shape modally
-final telegramResults = await HQPicker.pick(
+// Telegram style (sliding sheet)
+final results = await HQPicker.pick(
   context: context,
   shape: HQPickerShape.telegram,
   maxCount: 5,
 );
 
-// Launch Document picker
-final docResults = await HQPicker.pick(
+// Native document picker
+final docs = await HQPicker.pick(
   context: context,
   shape: HQPickerShape.document,
   allowedExtensions: ['pdf', 'docx'],
 );
+
+// Native directory picker
+final dir = await HQPicker.pickDirectory();
 ```
 
-### 2. Convenience Helper Methods
-
-`HQPickerFilePicker` and `HQPicker` provide clean convenience methods centered around `HQPickerShape`:
+### 2. Convenience shortcuts
 
 ```dart
-// Pick Images
-final images = await HQPickerFilePicker.pickImage(
+// Images only — Instagram style
+final images = await HQPicker.pickImage(
   context: context,
   shape: HQPickerShape.instagram,
   maxCount: 5,
 );
 
-// Pick Videos
-final videos = await HQPickerFilePicker.pickVideo(
+// Videos only — Telegram style
+final videos = await HQPicker.pickVideo(
   context: context,
-  shape: HQPickerShape.custom,
+  shape: HQPickerShape.telegram,
   maxCount: 3,
 );
 
-// Pick Documents
-final docs = await HQPickerFilePicker.pickDocument(
-  shape: HQPickerShape.document,
+// Documents
+final docs = await HQPicker.pickDocument(
   allowedExtensions: ['pdf'],
 );
-
-// Pick Directory
-final dir = await HQPickerFilePicker.pickDirectory();
 ```
 
-### 3. Inline Telegram Media Sheet
-
-The Telegram picker can also be used inline in your widget tree:
+### 3. Inline Telegram sheet
 
 ```dart
-final GlobalKey<HQPickerTelegramMediaPickersState> _telegramSheetKey = GlobalKey();
+final GlobalKey<HQPickerTelegramMediaPickersState> _key = GlobalKey();
 
-// Open the sheet
-ElevatedButton(
-  onPressed: () {
-    _telegramSheetKey.currentState?.toggleSheet(context);
-  },
-  child: const Text("Open Telegram Sheet"),
-);
-
-// Widget in tree
+// In your widget tree:
 HQPickerTelegramMediaPickers(
-  key: _telegramSheetKey,
+  key: _key,
   requestType: HQPickerRequestType.all,
   maxCountPickMedia: 5,
   maxCountPickFiles: 5,
-  primeryColor: Colors.deepPurple,
+  config: const HQPickerConfig(),
   onMediaPicked: (assets, files) {
-    print("Picked ${assets?.length} assets and ${files?.length} files");
+    debugPrint('Picked ${assets?.length} assets, ${files?.length} files');
   },
 );
-```
 
----
-
-##  Configuration & Localization
-
-You can easily theme and localize the picker by passing an `HQPickerConfig` object:
-
-```dart
-final results = await HQPicker.pick(
-  context: context,
-  shape: HQPickerShape.scaffoldBottomSheet,
-  maxCount: 10,
-  requestType: HQPickerRequestType.all,
-  config: const HQPickerConfig(
-    localizations: HQPickerLocalizations.ar(), // Arabic Localization
-    theme: HQPickerTheme(
-      appbarColor: Colors.deepPurple,
-      confirmButtonColor: Colors.deepPurple,
-    ),
-  ),
+// Open / close:
+ElevatedButton(
+  onPressed: () => _key.currentState?.toggleSheet(context),
+  child: const Text('Open Telegram Sheet'),
 );
 ```
 
 ---
 
-##  Return Types
+## 🎨 Theming — Full Text-Style Control
 
-All pickers return `List<HQPickerResult>`. Each `HQPickerResult` contains:
-- `asset`: The original `AssetEntity?` (if picked from gallery).
-- `file`: The `File?` representation or processed file (if cropped/compressed or picked from device file system).
+Every visible text in the picker can be styled independently via `HQPickerTheme`:
+
+```dart
+config: HQPickerConfig(
+  theme: HQPickerTheme(
+    // Colors
+    backgroundColor: Color(0xFF1E1E2E),
+    appbarColor: Color(0xFF1E1E2E),
+    confirmButtonColor: Colors.deepPurple,
+    badgeBackgroundColor: Colors.deepPurple,
+
+    // Text styles
+    albumNameTextStyle: TextStyle(
+      fontFamily: 'Cairo',
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      color: Colors.white,
+    ),
+    confirmButtonTextStyle: TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.w600,
+    ),
+    badgeTextStyle: TextStyle(color: Colors.white),
+    videoDurationTextStyle: TextStyle(fontSize: 9, color: Colors.yellow),
+    emptyListTextStyle: TextStyle(color: Colors.white54, fontSize: 16),
+    dialogTitleTextStyle: TextStyle(color: Colors.white),
+    dialogContentTextStyle: TextStyle(color: Colors.white70),
+    snackBarTextStyle: TextStyle(color: Colors.white),
+  ),
+),
+```
+
+---
+
+## 🌐 Localization
+
+All strings default to English. Override any or use the built-in Arabic preset:
+
+```dart
+// Arabic preset
+config: HQPickerConfig(
+  localizations: HQPickerLocalizations.ar(),
+),
+
+// Or override individual strings
+config: HQPickerConfig(
+  localizations: HQPickerLocalizations(
+    confirm: 'Done',
+    gallery: 'My Gallery',
+    permissionRequired: 'Access Required',
+    permissionDenied: 'Please allow media access in Settings.',
+    openSettings: 'Open Settings',
+    emptyList: 'No media found',
+  ),
+),
+```
+
+---
+
+## 🔔 Custom SnackBar / Toast
+
+Replace the default built-in SnackBar with your own notification:
+
+```dart
+config: HQPickerConfig(
+  showSnackBar: false, // disable built-in snackbar
+  onSnackBar: (context, message) {
+    // Use any toast library or widget
+    Fluttertoast.showToast(msg: message);
+  },
+),
+```
+
+---
+
+## ⚙️ Advanced Config
+
+```dart
+config: HQPickerConfig(
+  // Image processing
+  enableCropping: true,
+  compressImage: true,
+  compressQuality: 80,
+
+  // Custom loading overlay during processing
+  loadingWidget: Center(
+    child: CircularProgressIndicator(color: Colors.deepPurple),
+  ),
+
+  // Custom icons
+  icons: HQPickerIcons(
+    camera: Icon(Icons.camera_alt_outlined),
+    cameraVideo: Icon(Icons.video_call_outlined), // video camera in Instagram toolbar
+    dropdown: Icon(Icons.expand_more),
+  ),
+),
+```
+
+---
+
+## 📦 Return Type
+
+All pickers return `List<HQPickerResult>`:
+
+```dart
+final results = await HQPicker.pick(...);
+
+for (final result in results) {
+  final File? file = result.file;     // File representation
+  final AssetEntity? asset = result.asset; // Original gallery asset
+}
+```
+
+---
+
+## 📋 HQPickerConfig Reference
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `theme` | `HQPickerTheme` | default dark | All colors & text styles |
+| `localizations` | `HQPickerLocalizations` | English | All UI strings |
+| `icons` | `HQPickerIcons` | Material icons | All picker icons |
+| `enableCropping` | `bool` | `false` | Enable image crop after pick |
+| `compressImage` | `bool` | `true` | Compress images before returning |
+| `compressQuality` | `int` | `80` | JPEG compression quality (0–100) |
+| `showSnackBar` | `bool` | `true` | Show built-in SnackBar on empty selection |
+| `onSnackBar` | `Function?` | `null` | Custom SnackBar / toast callback |
+| `loadingWidget` | `Widget?` | `CircularProgressIndicator` | Overlay shown during processing |

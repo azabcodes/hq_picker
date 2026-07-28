@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
 import 'package:hq_picker/src/core/components/camera_preview_widget.dart';
-import 'package:hq_picker/src/telegram_media_picker.dart';
+import 'package:hq_picker/src/telegram/telegram_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';

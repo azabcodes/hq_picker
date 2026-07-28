@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 /// Configurable icons for all UI elements across HQPicker.
 class HQPickerIcons {
   final Widget camera;
+
+  /// Icon for the video camera button in the Instagram picker toolbar.
+  /// Shown only when [HQPickerRequestType] is `video` or `all`.
+  final Widget cameraVideo;
   final Widget send;
   final Widget check;
   final Widget play;
@@ -16,6 +20,7 @@ class HQPickerIcons {
 
   const HQPickerIcons({
     this.camera = const Icon(Icons.camera_alt),
+    this.cameraVideo = const Icon(Icons.videocam),
     this.send = const Icon(Icons.send),
     this.check = const Icon(Icons.check),
     this.play = const Icon(Icons.play_arrow),
@@ -30,6 +35,7 @@ class HQPickerIcons {
 
   HQPickerIcons copyWith({
     Widget? camera,
+    Widget? cameraVideo,
     Widget? send,
     Widget? check,
     Widget? play,
@@ -43,6 +49,7 @@ class HQPickerIcons {
   }) {
     return HQPickerIcons(
       camera: camera ?? this.camera,
+      cameraVideo: cameraVideo ?? this.cameraVideo,
       send: send ?? this.send,
       check: check ?? this.check,
       play: play ?? this.play,

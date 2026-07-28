@@ -120,9 +120,35 @@ class _PickerHomePageState extends State<PickerHomePage>
         maxCount: maxCount,
         requestType: requestType,
         allowedExtensions: allowedExtensions,
-        config: const HQPickerConfig(
+        config: HQPickerConfig(
           enableCropping: false,
           compressImage: false,
+          // ── Theming example ──────────────────────────────
+          theme: const HQPickerTheme(
+            backgroundColor: Color(0xFF1E1E2E),
+            appbarColor: Color(0xFF1E1E2E),
+            backgroundDropDownColor: Color(0xFF2A2D3E),
+            confirmButtonColor: Colors.deepPurple,
+            badgeBackgroundColor: Colors.deepPurple,
+          ),
+          // ── Localization example ──────────────────────────
+          localizations: const HQPickerLocalizations(
+            confirm: 'Done',
+            emptyList: 'No media found',
+            gallery: 'Gallery',
+            permissionRequired: 'Access Required',
+            permissionDenied: 'Please allow media access in Settings.',
+          ),
+          // ── Custom snack-bar callback ─────────────────────
+          onSnackBar: (ctx, msg) {
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(
+                content: Text(msg),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.deepPurple,
+              ),
+            );
+          },
         ),
       );
 
@@ -132,7 +158,7 @@ class _PickerHomePageState extends State<PickerHomePage>
       if (results.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${results.length} item(s) selected'),
+            content: Text('✅ ${results.length} item(s) selected'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -141,7 +167,7 @@ class _PickerHomePageState extends State<PickerHomePage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to pick: $e'),
+          content: Text('❌ Failed to pick: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
         ),
