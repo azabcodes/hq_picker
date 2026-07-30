@@ -1,3 +1,9 @@
+## 0.0.7
+
+### Fixed
+- **Large File OOM Crash Prevention**: Updated `HQPickerProcessor._resolveAssetFile` to prioritize `asset.originFile` before fallback to `asset.file`. This resolves original file paths directly on disk without duplicating large media files (500MB - 1GB+) into cache memory, eliminating Out-Of-Memory (OOM) process crashes.
+- **Exception Guards**: Added safe `try/catch` exception wrappers around `openFile` and `getDirectoryPath` in `HQPickerProcessor.pickDocument` and `pickDirectory`.
+
 ## 0.0.6
 
 ### Fixed & Improved

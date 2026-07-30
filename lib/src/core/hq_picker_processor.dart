@@ -11,6 +11,7 @@ import 'tools/media_editor.dart';
 /// file-system picking (documents and directories).
 class HQPickerProcessor {
   /// Resolves the underlying [File] from an [AssetEntity] in a background isolate.
+  /// Uses [originFile] first to avoid copying large files (500MB+) to cache and causing OOM crashes.
   static Future<File?> _resolveAssetFile(AssetEntity asset) async {
     final assetId = asset.id;
     try {
@@ -18,14 +19,17 @@ class HQPickerProcessor {
         function: (id, _) async {
           if (id == null) return null;
           final entity = await AssetEntity.fromId(id);
-          final f = await entity?.file;
+          final f = await entity?.originFile ?? await entity?.file;
           return f?.path;
         },
         input: assetId,
       );
-      return path != null ? File(path) : await asset.file;
+      if (path != null && path.isNotEmpty) {
+        return File(path);
+      }
+      return await asset.originFile ?? await asset.file;
     } catch (_) {
-      return await asset.file;
+      return await asset.originFile ?? await asset.file;
     }
   }
 
@@ -89,13 +93,17 @@ class HQPickerProcessor {
     HQPickerConfig config = const HQPickerConfig(),
   }) async {
     if (shape == HQPickerShape.document) {
-      final XTypeGroup typeGroup = XTypeGroup(
-        label: 'documents',
-        extensions: allowedExtensions,
-      );
-      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
-      if (file != null) {
-        return [HQPickerResult(file: File(file.path))];
+      try {
+        final XTypeGroup typeGroup = XTypeGroup(
+          label: 'documents',
+          extensions: allowedExtensions,
+        );
+        final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+        if (file != null) {
+          return [HQPickerResult(file: File(file.path))];
+        }
+      } catch (e) {
+        debugPrint('HQPicker pickDocument error: $e');
       }
       return [];
     }
@@ -114,9 +122,13 @@ class HQPickerProcessor {
     int maxCount = 1,
   }) async {
     if (shape == HQPickerShape.directory) {
-      final String? path = await getDirectoryPath();
-      if (path != null) {
-        return [HQPickerResult(file: File(path))];
+      try {
+        final String? path = await getDirectoryPath();
+        if (path != null) {
+          return [HQPickerResult(file: File(path))];
+        }
+      } catch (e) {
+        debugPrint('HQPicker pickDirectory error: $e');
       }
       return [];
     }
