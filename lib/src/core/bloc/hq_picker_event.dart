@@ -5,6 +5,8 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../tools/media_services.dart';
 
+import '../config/hq_picker_config.dart';
+
 abstract class HQPickerEvent extends Equatable {
   const HQPickerEvent();
 
@@ -15,11 +17,16 @@ abstract class HQPickerEvent extends Equatable {
 class LoadAlbumsEvent extends HQPickerEvent {
   final HQPickerRequestType requestType;
   final bool fetchFileCounts;
+  final HQPickerSortOrder sortOrder;
 
-  const LoadAlbumsEvent({required this.requestType, this.fetchFileCounts = false});
+  const LoadAlbumsEvent({
+    required this.requestType,
+    this.fetchFileCounts = false,
+    this.sortOrder = HQPickerSortOrder.newestFirst,
+  });
 
   @override
-  List<Object?> get props => [requestType, fetchFileCounts];
+  List<Object?> get props => [requestType, fetchFileCounts, sortOrder];
 }
 
 class ChangeAlbumEvent extends HQPickerEvent {

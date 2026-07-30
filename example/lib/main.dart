@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hq_picker/hq_picker.dart';
 
@@ -139,6 +141,26 @@ class _PickerHomePageState extends State<PickerHomePage>
             permissionRequired: 'Access Required',
             permissionDenied: 'Please allow media access in Settings.',
           ),
+          // ── Scroll physics, sort order & custom icons ──
+          sortOrder: HQPickerSortOrder.newestFirst,
+          scrollPhysics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          icons: HQPickerIcons(
+            gifBadge: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Text(
+                'GIF',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
           // ── Custom snack-bar callback ─────────────────────
           onSnackBar: (ctx, msg) {
             ScaffoldMessenger.of(ctx).showSnackBar(
@@ -149,6 +171,17 @@ class _PickerHomePageState extends State<PickerHomePage>
               ),
             );
           },
+          // ── Custom empty state widget ───────────────────
+          emptyWidget: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, size: 48, color: Colors.white54),
+                SizedBox(height: 12),
+                Text('No items found in this album', style: TextStyle(color: Colors.white54)),
+              ],
+            ),
+          ),
         ),
       );
 
@@ -158,7 +191,7 @@ class _PickerHomePageState extends State<PickerHomePage>
       if (results.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ ${results.length} item(s) selected'),
+            content: Text('${results.length} item(s) selected'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -167,7 +200,7 @@ class _PickerHomePageState extends State<PickerHomePage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Failed to pick: $e'),
+          content: Text('Failed to pick: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -242,7 +275,8 @@ class _TabContentView extends StatefulWidget {
     required HQPickerShape shape,
     required int maxCount,
     required HQPickerRequestType requestType,
-  }) onPick;
+  })
+  onPick;
   final VoidCallback onClearResults;
 
   const _TabContentView({
@@ -343,9 +377,8 @@ class _TabContentViewState extends State<_TabContentView>
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _ResultItemTile(
-                  result: widget.results[index],
-                ),
+                (context, index) =>
+                    _ResultItemTile(result: widget.results[index]),
                 childCount: widget.results.length,
                 addAutomaticKeepAlives: true,
                 addRepaintBoundaries: true,
@@ -468,93 +501,128 @@ class _ResultItemTile extends StatelessWidget {
   final HQPickerResult result;
   const _ResultItemTile({required this.result});
 
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final file = result.file;
-    final asset = result.asset;
 
-    final isImage = asset?.type == AssetType.image ||
-        (file != null &&
-            ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic']
-                .any((ext) => file.path.toLowerCase().endsWith(ext)));
+    return FutureBuilder<File?>(
+      future: result.getFile(),
+      builder: (context, snapshot) {
+        final file = snapshot.data ?? result.file;
+        final asset = result.asset;
 
-    final isVideo = asset?.type == AssetType.video ||
-        (file != null &&
-            ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv']
-                .any((ext) => file.path.toLowerCase().endsWith(ext)));
+        final isImage =
+            asset?.type == AssetType.image ||
+            (file != null &&
+                [
+                  '.jpg',
+                  '.jpeg',
+                  '.png',
+                  '.gif',
+                  '.webp',
+                  '.heic',
+                ].any((ext) => file.path.toLowerCase().endsWith(ext)));
 
-    Widget leadingWidget;
-    if (asset != null) {
-      leadingWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: AssetEntityImage(
-            asset,
-            isOriginal: false,
-            thumbnailSize: const ThumbnailSize.square(200),
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fallbackIcon(theme, isImage, isVideo),
+        final isVideo =
+            asset?.type == AssetType.video ||
+            (file != null &&
+                [
+                  '.mp4',
+                  '.mov',
+                  '.avi',
+                  '.mkv',
+                  '.flv',
+                  '.wmv',
+                ].any((ext) => file.path.toLowerCase().endsWith(ext)));
+
+        Widget leadingWidget;
+        if (asset != null) {
+          leadingWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: AssetEntityImage(
+                asset,
+                isOriginal: false,
+                thumbnailSize: const ThumbnailSize.square(200),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _fallbackIcon(theme, isImage, isVideo),
+              ),
+            ),
+          );
+        } else if (file != null && isImage) {
+          leadingWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              file,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  _fallbackIcon(theme, isImage, isVideo),
+            ),
+          );
+        } else {
+          leadingWidget = SizedBox(
+            width: 44,
+            height: 44,
+            child: _fallbackIcon(theme, isImage, isVideo),
+          );
+        }
+
+        String title = 'Picked File';
+        if (file != null) {
+          title = file.path.split('/').last;
+        } else if (asset != null) {
+          title = 'Asset ${asset.id}';
+        }
+
+        String subtitle = 'Loading file details...';
+        if (file != null) {
+          final sizeStr = file.existsSync()
+              ? _formatBytes(file.lengthSync())
+              : 'Unknown size';
+          subtitle = '$sizeStr • ${file.path}';
+        } else if (asset != null) {
+          subtitle =
+              '${asset.type.name.toUpperCase()} • ${asset.width}x${asset.height}';
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainerHigh,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-        ),
-      );
-    } else if (file != null && isImage) {
-      leadingWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          file,
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon(theme, isImage, isVideo),
-        ),
-      );
-    } else {
-      leadingWidget = SizedBox(
-        width: 44,
-        height: 44,
-        child: _fallbackIcon(theme, isImage, isVideo),
-      );
-    }
-
-    String title = 'Picked File';
-    if (file != null) {
-      title = file.path.split('/').last;
-    } else if (asset != null) {
-      title = 'Asset ${asset.id}';
-    }
-
-    String subtitle = '';
-    if (asset != null) {
-      subtitle = '${asset.type.name.toUpperCase()} • ${asset.width}x${asset.height}';
-    } else if (file != null) {
-      subtitle = file.path;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: ListTile(
-        dense: true,
-        leading: leadingWidget,
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          subtitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+          child: ListTile(
+            dense: true,
+            leading: leadingWidget,
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
     );
   }
 

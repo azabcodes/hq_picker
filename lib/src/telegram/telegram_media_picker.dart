@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -90,7 +91,11 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
     _controller = DraggableScrollableController();
 
     _bloc = HQPickerBloc()
-      ..add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: true));
+      ..add(LoadAlbumsEvent(
+        requestType: widget.requestType,
+        fetchFileCounts: true,
+        sortOrder: widget.config.sortOrder,
+      ));
 
     _controller.addListener(() {
       _bloc.add(UpdateScrollSizeEvent(_controller.size));
@@ -102,6 +107,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
 
   @override
   void dispose() {
+    PhotoManager.clearFileCache();
     _controller.dispose();
     _bloc.close();
     _overlayEntry?.remove();
@@ -109,6 +115,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
   }
 
   void toggleSheet(BuildContext context) {
+    HapticFeedback.lightImpact();
     if (_bloc.state.isDraggableOpen) {
       _overlayEntry?.remove();
       _overlayEntry = null;
@@ -134,128 +141,152 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
           left: 0,
           right: 0,
           height: MediaQuery.of(context).size.height,
-          child: Material(
-            color: Colors.transparent,
-            child: GestureDetector(
-              onTap: () {
-                toggleSheet(parentContext);
-              },
-              child: Stack(
-                children: [
-                  BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.3),
+          child: PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) return;
+              toggleSheet(parentContext);
+            },
+            child: Material(
+              color: Colors.transparent,
+              child: GestureDetector(
+                onTap: () {
+                  toggleSheet(parentContext);
+                },
+                child: Stack(
+                  children: [
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.3),
+                      ),
                     ),
-                  ),
-                  SafeArea(
-                    child: Stack(
-                      children: [
-                        NotificationListener<ScrollNotification>(
-                          onNotification: (ScrollNotification scrollInfo) {
-                            if (scrollInfo.metrics.pixels >=
-                                scrollInfo.metrics.maxScrollExtent - 200) {
-                              _bloc.add(LoadMoreAssetsEvent());
-                            }
-                            return false;
-                          },
-                          child: DraggableScrollableSheet(
-                            controller: _controller,
-                            initialChildSize: 0.5,
-                            minChildSize: 0.2,
-                            maxChildSize: 1.0,
-                            builder: (context, scrollController) {
-                              return HQPickerDefultBuilderWidget(
-                                widget: widget,
-                                controller: scrollController,
-                              );
+                    SafeArea(
+                      child: Stack(
+                        children: [
+                          NotificationListener<DraggableScrollableNotification>(
+                            onNotification: (DraggableScrollableNotification notification) {
+                              if (notification.extent <= 0.05 && _bloc.state.isDraggableOpen) {
+                                toggleSheet(parentContext);
+                              }
+                              return false;
                             },
+                            child: NotificationListener<ScrollNotification>(
+                              onNotification: (ScrollNotification scrollInfo) {
+                                if (scrollInfo.metrics.pixels >=
+                                    scrollInfo.metrics.maxScrollExtent - 200) {
+                                  _bloc.add(LoadMoreAssetsEvent());
+                                }
+                                return false;
+                              },
+                              child: DraggableScrollableSheet(
+                                controller: _controller,
+                                initialChildSize: 0.55,
+                                minChildSize: 0.0,
+                                maxChildSize: 1.0,
+                                snap: true,
+                                snapSizes: const [0.55, 1.0],
+                                shouldCloseOnMinExtent: true,
+                                builder: (context, scrollController) {
+                                  return HQPickerDefultBuilderWidget(
+                                    widget: widget,
+                                    controller: scrollController,
+                                  );
+                                },
+                              ),
+                            ),
                           ),
-                        ),
 
-                        // App bar that appears when the sheet is near the top
-                        BlocSelector<HQPickerBloc, HQPickerState, double>(
-                          selector: (state) => state.scrollSize,
-                          builder: (context, size) {
-                            final showAppBar = size > 0.9;
-                            return Positioned(
-                              top: 0,
-                              right: 0,
-                              left: 0,
-                              child: AnimatedOpacity(
-                                opacity: showAppBar ? 1.0 : 0.0,
-                                duration: const Duration(milliseconds: 400),
-                                child: AnimatedContainer(
+                          // App bar that appears when the sheet is near the top
+                          BlocSelector<HQPickerBloc, HQPickerState, double>(
+                            selector: (state) => state.scrollSize,
+                            builder: (context, size) {
+                              final showAppBar = size > 0.9;
+                              return Positioned(
+                                top: 0,
+                                right: 0,
+                                left: 0,
+                                child: AnimatedOpacity(
+                                  opacity: showAppBar ? 1.0 : 0.0,
                                   duration: const Duration(milliseconds: 400),
-                                  height: showAppBar
-                                      ? MediaQuery.of(context).size.height * 0.075
-                                      : 0,
-                                  color: theme.primaryColor,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: () => toggleSheet(parentContext),
-                                          icon: IconTheme(
-                                            data: IconThemeData(color: theme.colorScheme.onPrimary),
-                                            child: widget.config.icons.back,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 15),
-                                        BlocBuilder<HQPickerBloc, HQPickerState>(
-                                          builder: (context, state) {
-                                            final albumName =
-                                                (state.selectedAlbum != null &&
-                                                    state.selectedAlbum!.name == 'Recent')
-                                                ? widget.config.localizations.gallery
-                                                : (state.selectedAlbum?.name ?? '');
-                                            return InkWell(
-                                              onTap: () {
-                                                if (showAppBar) {
-                                                  _showAlbumSelector(parentContext, _bloc);
-                                                }
-                                              },
-                                              child: Row(
-                                                children: [
-                                                  Text(
-                                                    albumName,
-                                                    style: widget
-                                                        .config
-                                                        .theme
-                                                        .resolvedAlbumNameTextStyle,
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  IconTheme(
-                                                    data: IconThemeData(
-                                                      color: theme.colorScheme.onPrimary,
-                                                      size: 28,
-                                                    ),
-                                                    child: widget.config.icons.dropdown,
-                                                  ),
-                                                ],
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 400),
+                                    height: showAppBar
+                                        ? MediaQuery.of(context).size.height * 0.075
+                                        : 0,
+                                    color: theme.primaryColor,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                                      child: Row(
+                                        children: [
+                                          IconButton(
+                                            onPressed: () => toggleSheet(parentContext),
+                                            icon: IconTheme(
+                                              data: IconThemeData(
+                                                color: theme.colorScheme.onPrimary,
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                              child: widget.config.icons.back,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 15),
+                                          BlocBuilder<HQPickerBloc, HQPickerState>(
+                                            builder: (context, state) {
+                                              final albumName =
+                                                  (state.selectedAlbum != null &&
+                                                      state.selectedAlbum!.name == 'Recent')
+                                                  ? widget.config.localizations.gallery
+                                                  : (state.selectedAlbum?.name ?? '');
+                                              return InkWell(
+                                                onTap: () {
+                                                  if (showAppBar) {
+                                                    _showAlbumSelector(parentContext, _bloc);
+                                                  }
+                                                },
+                                                child: Row(
+                                                  children: [
+                                                    Text(
+                                                      albumName,
+                                                      style: widget
+                                                          .config
+                                                          .theme
+                                                          .resolvedAlbumNameTextStyle,
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    IconTheme(
+                                                      data: IconThemeData(
+                                                        color: theme.colorScheme.onPrimary,
+                                                        size: 28,
+                                                      ),
+                                                      child: widget.config.icons.dropdown,
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void showAlbumSelector(BuildContext parentContext) {
+    _showAlbumSelector(parentContext, _bloc);
   }
 
   void _showAlbumSelector(BuildContext parentContext, HQPickerBloc bloc) {

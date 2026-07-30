@@ -1,25 +1,34 @@
 # HQPicker
 
-A high-performance, fully customizable, multi-mode media picker for Flutter — powered by the **BLoC pattern**. HQPicker delivers 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
+A high-performance, fully customizable, multi-mode media picker for Flutter — powered by the BLoC pattern. HQPicker delivers 60fps scrolling, zero `setState` sluggishness, and elegant memory management even with thousands of media files.
 
 ---
 
-## ✨ Features
+## Features
 
-- **BLoC Architecture** — Zero `setState` inside the picker core. Optimized for fast rebuilds and scalability.
-- **Two Beautiful Picker Styles** — Instagram full-screen preview + Telegram draggable bottom sheet.
-- **Unified `HQPicker` API** — One entry-point for all shapes: `instagram`, `telegram`, `document`, `directory`.
-- **Conditional Camera Buttons** — In the Instagram picker the camera / video-camera buttons are shown only when the `requestType` supports them.
-- **Pagination Built-in** — Lazy-loads media in chunks of 60 to prevent memory leaks and freezing.
-- **Full Text-Style Theming** — Every `Text` widget in the picker (badge, album name, video duration, dialog, snack-bar…) is individually styleable via `HQPickerTheme`.
-- **Cropping & Compression** — Built-in image editing with adjustable quality, shown behind a configurable loading overlay.
-- **Localization** — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations`.
-- **Custom SnackBar / Toast** — Provide `onSnackBar` to replace the built-in SnackBar with any toast/overlay you prefer.
-- **File System Support** — Native document and directory pickers via `file_selector`.
+- BLoC Architecture — Zero `setState` inside the picker core. Optimized for fast rebuilds and scalability.
+- Isolate-Powered Performance — Heavy file resolving, compression, and file system scanning execute in background isolates using `IsolateServices` to eliminate UI thread freezes when selecting large videos (1GB+) or photos.
+- Ultra-Smooth 60/120fps Scrolling — Optimized state rebuild filtering (`buildWhen`) and pre-rendering cache (`scrollCacheExtent: 1500.0`) for stutter-free thumbnail scrolling.
+- Instant Selection Response — Single state emission per tap combined with O(1) set lookup (`selectedAssetIdsSet`) for 0ms selection delay.
+- Telegram Drag-to-Close Sheet — Draggable bottom sheet with snap points (`0.55`, `1.0`) and smooth swipe-down-to-close behavior.
+- Interactive Zoom Preview — Pinch-to-zoom (1.0x to 4.0x) on the top preview image in the Instagram picker.
+- Tactile Haptic Feedback — Native feedback (`HapticFeedback.selectionClick()`, `lightImpact()`, `vibrate()`) for media selection, album toggles, and max-count limits.
+- System Back Gesture Support — Integrated `PopScope` to catch Android and iOS system back gestures and close picker sheets gracefully.
+- Auto Memory Cleanup — Automatically clears temporary thumbnail caches (`PhotoManager.clearFileCache()`) on picker disposal.
+- Custom Empty Widget — Pass `emptyWidget` to `HQPickerConfig` for custom empty state illustrations when an album has no assets.
+- Two Beautiful Picker Styles — Instagram full-screen preview + Telegram draggable bottom sheet.
+- Unified `HQPicker` API — One entry-point for all shapes: `instagram`, `telegram`, `document`, `directory`.
+- Conditional Camera Buttons — In the Instagram picker the camera / video-camera buttons are shown only when the `requestType` supports them.
+- Pagination Built-in — Lazy-loads media in chunks of 60 to prevent memory leaks and freezing.
+- Full Text-Style Theming — Every `Text` widget in the picker (badge, album name, video duration, dialog, snack-bar…) is individually styleable via `HQPickerTheme`.
+- Cropping & Compression — Built-in image editing with adjustable quality, shown behind a configurable loading overlay.
+- Localization — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations`.
+- Custom SnackBar / Toast — Provide `onSnackBar` to replace the built-in SnackBar with any toast/overlay you prefer.
+- File System Support — Native document and directory pickers via `file_selector`.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ```bash
 flutter pub add hq_picker
@@ -29,7 +38,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^0.0.4
+  hq_picker: ^0.0.6
 ```
 
 Import in your Dart code:
@@ -40,7 +49,7 @@ import 'package:hq_picker/hq_picker.dart';
 
 ---
 
-## 📱 Usage
+## Usage
 
 ### 1. Unified `HQPicker.pick(...)` — recommended
 
@@ -120,7 +129,30 @@ ElevatedButton(
 
 ---
 
-## 🎨 Theming — Full Text-Style Control
+## Heavy & Large File Handling (Isolate-Powered)
+
+HQPicker runs background isolates for file resolution and compression. When receiving `List<HQPickerResult>`, you can safely access the file via `result.file` or asynchronously via `result.getFile()` without locking the main UI thread.
+
+```dart
+final results = await HQPicker.pickVideo(
+  context: context,
+  shape: HQPickerShape.telegram,
+  maxCount: 1,
+);
+
+for (final result in results) {
+  // Safely resolve the file in background isolate if not already loaded
+  final File? file = await result.getFile();
+  if (file != null) {
+    // Process or upload using Streams / Chunks for large files (1GB+)
+    final Stream<List<int>> fileStream = file.openRead();
+  }
+}
+```
+
+---
+
+## Theming — Full Text-Style Control
 
 Every visible text in the picker can be styled independently via `HQPickerTheme`:
 
@@ -156,7 +188,7 @@ config: HQPickerConfig(
 
 ---
 
-## 🌐 Localization
+## Localization
 
 All strings default to English. Override any or use the built-in Arabic preset:
 
@@ -181,7 +213,7 @@ config: HQPickerConfig(
 
 ---
 
-## 🔔 Custom SnackBar / Toast
+## Custom SnackBar / Toast
 
 Replace the default built-in SnackBar with your own notification:
 
@@ -197,7 +229,7 @@ config: HQPickerConfig(
 
 ---
 
-## ⚙️ Advanced Config
+## Advanced Config
 
 ```dart
 config: HQPickerConfig(
@@ -222,7 +254,7 @@ config: HQPickerConfig(
 
 ---
 
-## 📦 Return Type
+## Return Type
 
 All pickers return `List<HQPickerResult>`:
 
@@ -230,14 +262,14 @@ All pickers return `List<HQPickerResult>`:
 final results = await HQPicker.pick(...);
 
 for (final result in results) {
-  final File? file = result.file;     // File representation
-  final AssetEntity? asset = result.asset; // Original gallery asset
+  final File? file = await result.getFile(); // Asynchronously resolved File
+  final AssetEntity? asset = result.asset;   // Original gallery asset
 }
 ```
 
 ---
 
-## 📋 HQPickerConfig Reference
+## HQPickerConfig Reference
 
 | Property | Type | Default | Description |
 |---|---|---|---|
@@ -250,3 +282,7 @@ for (final result in results) {
 | `showSnackBar` | `bool` | `true` | Show built-in SnackBar on empty selection |
 | `onSnackBar` | `Function?` | `null` | Custom SnackBar / toast callback |
 | `loadingWidget` | `Widget?` | `CircularProgressIndicator` | Overlay shown during processing |
+| `emptyWidget` | `Widget?` | `null` | Custom widget displayed when an album or tab has no assets |
+| `maxFileSize` | `int?` | `null` | Max file size in bytes with warning feedback |
+| `sortOrder` | `HQPickerSortOrder` | `newestFirst` | Asset sorting order (`newestFirst` or `oldestFirst`) |
+| `assetItemBuilder` | `HQAssetItemBuilder?` | `null` | Custom tile builder for grid asset items |

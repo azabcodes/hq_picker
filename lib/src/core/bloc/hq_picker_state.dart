@@ -114,6 +114,8 @@ class HQPickerState extends Equatable {
     );
   }
 
+  Set<String> get selectedAssetIdsSet => selectedAssetList.map((e) => e.id).toSet();
+
   @override
   List<Object?> get props => [
     status,

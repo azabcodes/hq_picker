@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
@@ -86,7 +88,18 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
   Widget build(BuildContext context) {
     super.build(context);
     return BlocBuilder<HQPickerBloc, HQPickerState>(
+      buildWhen: (previous, current) {
+        return previous.assetsList != current.assetsList ||
+            previous.status != current.status ||
+            previous.selectedAlbum != current.selectedAlbum ||
+            (previous.scrollSize > 0.9) != (current.scrollSize > 0.9) ||
+            previous.selectedAssetList.length != current.selectedAssetList.length;
+      },
       builder: (context, state) {
+        final showAppBar = state.scrollSize > 0.9;
+        final appBarHeight = MediaQuery.of(context).size.height * 0.075;
+        final topPadding = showAppBar ? appBarHeight + 10.0 : 10.0;
+
         return Stack(
           children: [
             Container(
@@ -97,27 +110,63 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                 ),
               ),
               child: state.assetsList.isEmpty
-                  ? Center(
-                      child: state.status == HQPickerStatus.loading
-                          ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
-                          : Text(
-                              widget.widget.textEmptyList,
-                              style: widget.widget.config.theme.resolvedEmptyListTextStyle,
-                            ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 15, right: 10, left: 10),
+                  ? (widget.widget.config.emptyWidget ??
+                      Center(
+                        child: state.status == HQPickerStatus.loading
+                            ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
+                            : Text(
+                                widget.widget.textEmptyList,
+                                style: widget.widget.config.theme.resolvedEmptyListTextStyle,
+                              ),
+                      ))
+                  : AnimatedPadding(
+                      duration: const Duration(milliseconds: 250),
+                      padding: EdgeInsets.only(top: topPadding, right: 10, left: 10),
                       child: Column(
                         children: [
-                          Container(
-                            height: 7,
-                            width: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
+                          if (!showAppBar) ...[
+                            Container(
+                              height: 5,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.white54,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () {
+                                context
+                                    .findAncestorStateOfType<HQPickerTelegramMediaPickersState>()
+                                    ?.showAlbumSelector(context);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      (state.selectedAlbum != null &&
+                                              state.selectedAlbum!.name == 'Recent')
+                                          ? widget.widget.config.localizations.gallery
+                                          : (state.selectedAlbum?.name ??
+                                                widget.widget.config.localizations.gallery),
+                                      style: widget.widget.config.theme.resolvedAlbumNameTextStyle,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconTheme(
+                                      data: IconThemeData(
+                                        color: theme.colorScheme.onPrimary,
+                                        size: 24,
+                                      ),
+                                      child: widget.widget.config.icons.dropdown,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Flexible(
                             child: Container(
                               decoration: BoxDecoration(
@@ -127,7 +176,13 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                                 borderRadius: BorderRadius.circular(10),
                                 child: GridView.builder(
                                   controller: widget.controller,
-                                  physics: const BouncingScrollPhysics(),
+                                  physics: widget.widget.config.scrollPhysics ??
+                                      const BouncingScrollPhysics(
+                                        parent: AlwaysScrollableScrollPhysics(),
+                                      ),
+                                  scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
+                                  addRepaintBoundaries: true,
+                                  addAutomaticKeepAlives: true,
                                   itemCount: state.assetsList.length + 1,
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 3,
@@ -220,10 +275,28 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
     int maxCount,
     HQPickerState state,
   ) {
-    bool isSelected = state.selectedAssetList.contains(assetEntity);
+    bool isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
+    int? selectionIndex = isSelected ? state.selectedAssetList.indexOf(assetEntity) + 1 : null;
+
+    if (widget.widget.config.assetItemBuilder != null) {
+      return GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+        },
+        child: widget.widget.config.assetItemBuilder!(
+          context,
+          assetEntity,
+          isSelected,
+          selectionIndex,
+        ),
+      );
+    }
+
     return RepaintBoundary(
       child: GestureDetector(
         onTap: () {
+          HapticFeedback.selectionClick();
           context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
         },
         child: Stack(
@@ -235,6 +308,12 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                 thumbnailSize: const ThumbnailSize.square(200),
                 thumbnailFormat: ThumbnailFormat.jpeg,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Colors.white10,
+                  );
+                },
                 errorBuilder: (context, error, stackTrace) {
                   return Center(
                     child: IconTheme(
@@ -271,17 +350,44 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                   ),
                 ),
               ),
+            if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
+                assetEntity.mimeType?.contains('gif') == true)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: widget.widget.config.icons.gifBadge ??
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: const Text(
+                        'GIF',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+              ),
             if (isSelected)
               Positioned.fill(
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    border: Border.all(width: 8, color: Colors.white70),
-                  ),
-                  child: IconTheme(
-                    data: const IconThemeData(color: Colors.white, size: 30),
-                    child: widget.widget.config.icons.check,
+                child: AnimatedScale(
+                  scale: 1.0,
+                  duration: const Duration(milliseconds: 150),
+                  curve: Curves.easeOutCubic,
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      border: Border.all(width: 8, color: Colors.white70),
+                    ),
+                    child: IconTheme(
+                      data: const IconThemeData(color: Colors.white, size: 30),
+                      child: widget.widget.config.icons.check,
+                    ),
                   ),
                 ),
               ),

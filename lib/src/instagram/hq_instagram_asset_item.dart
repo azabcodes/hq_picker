@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
@@ -31,19 +32,24 @@ class HQAssetItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<HQPickerBloc>();
-    final isSelected = state.selectedAssetList.contains(assetEntity);
+    final isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
+    final selectionIndex = isSelected ? state.selectedAssetList.indexOf(assetEntity) + 1 : null;
+
+    if (config.assetItemBuilder != null) {
+      return GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+        },
+        child: config.assetItemBuilder!(context, assetEntity, isSelected, selectionIndex),
+      );
+    }
 
     return RepaintBoundary(
       child: GestureDetector(
         onTap: () {
-          bloc.add(SelectEntityEvent(assetEntity));
-          if (state.isMultiple) {
-            // In multi-select mode, tap toggles the asset in selectedAssetList
-            bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
-          } else {
-            // In single-select mode, just set the single selected asset
-            bloc.add(SetSelectedAssetsEvent([assetEntity]));
-          }
+          HapticFeedback.selectionClick();
+          bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
         },
         child: Stack(
           children: [
@@ -55,6 +61,12 @@ class HQAssetItem extends StatelessWidget {
                 thumbnailSize: const ThumbnailSize.square(250),
                 thumbnailFormat: ThumbnailFormat.jpeg,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Colors.white10,
+                  );
+                },
                 errorBuilder: (context, error, stackTrace) {
                   return Center(
                     child: IconTheme(
@@ -94,36 +106,69 @@ class HQAssetItem extends StatelessWidget {
                 ),
               ),
 
-            // ── Single-select overlay tint ──────────────────────────────────
-            Positioned.fill(
-              child: Container(
-                color: assetEntity == state.selectedEntity ? Colors.white60 : Colors.transparent,
+            // ── GIF badge ────────────────────────────────────────────────────
+            if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
+                assetEntity.mimeType?.contains('gif') == true)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: config.icons.gifBadge ??
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: const Text(
+                        'GIF',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
               ),
-            ),
+
+            // ── Single-select overlay tint ──────────────────────────────────
+            if (assetEntity == state.selectedEntity)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.white60,
+                ),
+              ),
 
             // ── Multi-select badge ───────────────────────────────────────────
             if (state.isMultiple)
               Positioned.fill(
                 child: GestureDetector(
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
                   },
                   child: Align(
                     alignment: Alignment.topRight,
                     child: Padding(
                       padding: const EdgeInsets.all(5.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isSelected ? config.theme.badgeBackgroundColor : Colors.white12,
-                          shape: BoxShape.circle,
-                          border: Border.all(width: 1.5, color: Colors.white),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            isSelected ? '${state.selectedAssetList.indexOf(assetEntity) + 1}' : '',
-                            style: config.theme.resolvedBadgeTextStyle.copyWith(
-                              color: isSelected ? null : Colors.transparent,
+                      child: AnimatedScale(
+                        scale: isSelected ? 1.05 : 0.9,
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOutCubic,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSelected ? config.theme.badgeBackgroundColor : Colors.white12,
+                            shape: BoxShape.circle,
+                            border: Border.all(width: 1.5, color: Colors.white),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              isSelected
+                                  ? '${state.selectedAssetList.indexOf(assetEntity) + 1}'
+                                  : '',
+                              style: config.theme.resolvedBadgeTextStyle.copyWith(
+                                color: isSelected ? null : Colors.transparent,
+                              ),
                             ),
                           ),
                         ),

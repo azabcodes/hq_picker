@@ -17,6 +17,7 @@ class HQPickerIcons {
   final Widget clear;
   final Widget error;
   final Widget back;
+  final Widget? gifBadge;
 
   const HQPickerIcons({
     this.camera = const Icon(Icons.camera_alt),
@@ -31,6 +32,7 @@ class HQPickerIcons {
     this.clear = const Icon(Icons.close),
     this.error = const Icon(Icons.error),
     this.back = const Icon(Icons.arrow_back_ios_new),
+    this.gifBadge,
   });
 
   HQPickerIcons copyWith({
@@ -46,6 +48,7 @@ class HQPickerIcons {
     Widget? clear,
     Widget? error,
     Widget? back,
+    Widget? gifBadge,
   }) {
     return HQPickerIcons(
       camera: camera ?? this.camera,
@@ -60,6 +63,7 @@ class HQPickerIcons {
       clear: clear ?? this.clear,
       error: error ?? this.error,
       back: back ?? this.back,
+      gifBadge: gifBadge ?? this.gifBadge,
     );
   }
 }

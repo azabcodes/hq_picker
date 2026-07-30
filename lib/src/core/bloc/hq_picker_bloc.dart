@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -124,7 +124,10 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
   Future<void> _onLoadAlbums(LoadAlbumsEvent event, Emitter<HQPickerState> emit) async {
     emit(state.copyWith(status: HQPickerStatus.loading));
     try {
-      final albums = await HQPickerMediaServices.loadAlbums(event.requestType);
+      final albums = await HQPickerMediaServices.loadAlbums(
+        event.requestType,
+        sortOrder: event.sortOrder,
+      );
 
       if (albums.isEmpty) {
         emit(
@@ -256,14 +259,26 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
 
   void _onToggleAssetSelection(ToggleAssetSelectionEvent event, Emitter<HQPickerState> emit) {
     final currentList = List<AssetEntity>.from(state.selectedAssetList);
-    if (currentList.contains(event.entity)) {
-      currentList.remove(event.entity);
-    } else {
-      if (currentList.length < event.maxCount) {
+    if (event.maxCount == 1) {
+      if (currentList.contains(event.entity)) {
+        currentList.clear();
+      } else {
+        currentList.clear();
         currentList.add(event.entity);
       }
+    } else {
+      if (currentList.contains(event.entity)) {
+        currentList.remove(event.entity);
+      } else if (currentList.length < event.maxCount) {
+        currentList.add(event.entity);
+      } else {
+        HapticFeedback.vibrate();
+      }
     }
-    emit(state.copyWith(selectedAssetList: currentList));
+    emit(state.copyWith(
+      selectedAssetList: currentList,
+      selectedEntity: () => event.entity,
+    ));
   }
 
   void _onSetSelectedAssets(SetSelectedAssetsEvent event, Emitter<HQPickerState> emit) {

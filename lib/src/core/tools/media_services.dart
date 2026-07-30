@@ -10,6 +10,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../config/hq_picker_config.dart';
 import '../extension/extensions_telegram_picker.dart';
+import 'isolate_services.dart';
 
 enum HQPickerRequestType { common, audio, image, video, all }
 
@@ -96,14 +97,24 @@ class HQPickerMediaServices {
   }
 
   static Future<List<AssetPathEntity>> loadAlbums(
-    HQPickerRequestType requestType,
-  ) async {
+    HQPickerRequestType requestType, {
+    HQPickerSortOrder sortOrder = HQPickerSortOrder.newestFirst,
+  }) async {
     var permission = await PhotoManager.requestPermissionExtend();
     List<AssetPathEntity> albumList = [];
     if (permission.isAuth == true) {
       final photoManagerRequestType = _mapRequestType(requestType);
+      final filterOption = FilterOptionGroup(
+        orders: [
+          OrderOption(
+            type: OrderOptionType.createDate,
+            asc: sortOrder == HQPickerSortOrder.oldestFirst,
+          ),
+        ],
+      );
       albumList = await PhotoManager.getAssetPathList(
         type: photoManagerRequestType,
+        filterOption: filterOption,
       );
     } else {
       PhotoManager.openSetting();
@@ -164,17 +175,13 @@ class HQPickerMediaServices {
   static Future<List<FileSystemEntity>> fetchFilesByExtensions(
     List<String> allowedExtensions,
   ) async {
-    List<FileSystemEntity> allFiles = [];
+    List<String> dirPaths = [];
     if (Platform.isAndroid) {
       final nativeAndroidPath = NativeAndroidPath();
       var publicDirectories = await nativeAndroidPath.getAllPaths();
       for (var dirType in publicDirectories.values) {
-        String? directory = dirType;
-        if (directory != null) {
-          Directory dir = Directory(directory);
-          if (!_isRestrictedAndroidDirectory(dir.path) && await dir.exists()) {
-            allFiles.addAll(await _getFilesRecursively(dir, allowedExtensions));
-          }
+        if (dirType != null && !_isRestrictedAndroidDirectory(dirType)) {
+          dirPaths.add(dirType);
         }
       }
     } else if (Platform.isIOS) {
@@ -184,15 +191,46 @@ class HQPickerMediaServices {
         if (dirType != null) {
           String? directory = await externalPathIos.getDirectoryPath(directory: dirType);
           if (directory != null) {
-            Directory dir = Directory(directory);
-            if (await dir.exists()) {
-              allFiles.addAll(await _getFilesRecursively(dir, allowedExtensions));
-            }
+            dirPaths.add(directory);
           }
         }
       }
     }
-    return allFiles;
+
+    if (dirPaths.isEmpty) return [];
+
+    try {
+      final filePaths = await IsolateServices.run<List<String>, Map<String, dynamic>>(
+        function: (params, _) async {
+          final paths = params!['paths'] as List<String>;
+          final exts = params['extensions'] as List<String>;
+
+          List<String> matchedFilePaths = [];
+          for (final dirPath in paths) {
+            final dir = Directory(dirPath);
+            if (await dir.exists()) {
+              final files = await _getFilesRecursively(dir, exts);
+              matchedFilePaths.addAll(files.map((f) => f.path));
+            }
+          }
+          return matchedFilePaths;
+        },
+        input: {
+          'paths': dirPaths,
+          'extensions': allowedExtensions,
+        },
+      );
+      return filePaths.map((p) => File(p)).toList();
+    } catch (_) {
+      List<FileSystemEntity> allFiles = [];
+      for (final dirPath in dirPaths) {
+        final dir = Directory(dirPath);
+        if (await dir.exists()) {
+          allFiles.addAll(await _getFilesRecursively(dir, allowedExtensions));
+        }
+      }
+      return allFiles;
+    }
   }
 }
 

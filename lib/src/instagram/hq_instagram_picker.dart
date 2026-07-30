@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
@@ -56,14 +57,22 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
   void initState() {
     super.initState();
     _bloc = HQPickerBloc()
-      ..add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false))
+      ..add(LoadAlbumsEvent(
+        requestType: widget.requestType,
+        fetchFileCounts: false,
+        sortOrder: widget.config.sortOrder,
+      ))
       ..add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
   }
 
   @override
   void didUpdateWidget(covariant HQInstagramPicker oldWidget) {
     if (oldWidget.requestType != widget.requestType) {
-      _bloc.add(LoadAlbumsEvent(requestType: widget.requestType, fetchFileCounts: false));
+      _bloc.add(LoadAlbumsEvent(
+        requestType: widget.requestType,
+        fetchFileCounts: false,
+        sortOrder: widget.config.sortOrder,
+      ));
     }
     if (oldWidget.maxCount != widget.maxCount) {
       _bloc.add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
@@ -73,6 +82,7 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
 
   @override
   void dispose() {
+    PhotoManager.clearFileCache();
     _bloc.close();
     super.dispose();
   }
@@ -128,76 +138,97 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
     final size = MediaQuery.of(context).size;
     return BlocProvider.value(
       value: _bloc,
-      child: SafeArea(
-        child: Scaffold(
-          backgroundColor: widget.config.theme.backgroundColor,
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: widget.config.theme.appbarColor,
-            leading: BackButton(color: widget.config.theme.textColor),
-            centerTitle: true,
-            title:
-                widget.title ??
-                Text(
-                  widget.config.localizations.gallery,
-                  style: widget.config.theme.resolvedAlbumNameTextStyle,
-                ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 15.0),
-                child: BlocBuilder<HQPickerBloc, HQPickerState>(
-                  builder: (context, state) {
-                    return InkResponse(
-                      child: Text(
-                        widget.config.localizations.confirm,
-                        style: widget.config.theme.resolvedConfirmButtonTextStyle,
-                      ),
-                      onTap: () {
-                        List<AssetEntity> finalSelection = [];
-                        if (state.selectedAssetList.isEmpty && state.selectedEntity != null) {
-                          finalSelection = [state.selectedEntity!];
-                        } else {
-                          finalSelection = List.from(state.selectedAssetList);
-                        }
-
-                        if (finalSelection.isNotEmpty) {
-                          Navigator.pop(context, finalSelection);
-                        } else {
-                          widget.config.showSelectionError(
-                            context,
-                            widget.config.localizations.emptyList,
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+      child: Scaffold(
+        backgroundColor: widget.config.theme.backgroundColor,
+        appBar: AppBar(
+          backgroundColor: widget.config.theme.appbarColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: IconTheme(
+              data: IconThemeData(color: widget.config.theme.textColor),
+              child: widget.config.icons.back,
+            ),
+            onPressed: () => Navigator.pop(context),
           ),
-          body: BlocBuilder<HQPickerBloc, HQPickerState>(
-            builder: (context, state) {
-              return Column(
-                children: [
-                  // ── Large preview ──────────────────────────────────────────
-                  SizedBox(
-                    height: size.height * 0.40,
-                    child: state.capturedImage != null
-                        ? Image.file(
+          title: widget.title ??
+              BlocSelector<HQPickerBloc, HQPickerState, AssetPathEntity?>(
+                selector: (state) => state.selectedAlbum,
+                builder: (context, selectedAlbum) {
+                  return Text(
+                    selectedAlbum == null
+                        ? widget.config.localizations.gallery
+                        : (selectedAlbum.name == 'Recent'
+                            ? widget.config.localizations.gallery
+                            : selectedAlbum.name),
+                    style: widget.config.theme.resolvedAlbumNameTextStyle,
+                  );
+                },
+              ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 15.0),
+              child: BlocBuilder<HQPickerBloc, HQPickerState>(
+                builder: (context, state) {
+                  return InkResponse(
+                    child: Text(
+                      widget.config.localizations.confirm,
+                      style: widget.config.theme.resolvedConfirmButtonTextStyle,
+                    ),
+                    onTap: () {
+                      List<AssetEntity> finalSelection = [];
+                      if (state.selectedAssetList.isEmpty && state.selectedEntity != null) {
+                        finalSelection = [state.selectedEntity!];
+                      } else {
+                        finalSelection = List.from(state.selectedAssetList);
+                      }
+
+                      if (finalSelection.isNotEmpty) {
+                        Navigator.pop(context, finalSelection);
+                      } else {
+                        widget.config.showSelectionError(
+                          context,
+                          widget.config.localizations.emptyList,
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        body: BlocBuilder<HQPickerBloc, HQPickerState>(
+          builder: (context, state) {
+            return Column(
+              children: [
+                // ── Large preview with InteractiveViewer (Pinch to Zoom) ─────
+                SizedBox(
+                  height: size.height * 0.40,
+                  child: state.capturedImage != null
+                      ? InteractiveViewer(
+                          minScale: 1.0,
+                          maxScale: 4.0,
+                          clipBehavior: Clip.hardEdge,
+                          child: Image.file(
                             fit: BoxFit.cover,
                             height: size.height,
                             width: size.width,
                             state.capturedImage!,
-                          )
-                        : (state.selectedEntity == null)
-                        ? const SizedBox.shrink()
-                        : Stack(
-                            children: [
-                              Positioned.fill(
+                          ),
+                        )
+                      : (state.selectedEntity == null)
+                      ? const SizedBox.shrink()
+                      : Stack(
+                          children: [
+                            Positioned.fill(
+                              child: InteractiveViewer(
+                                minScale: 1.0,
+                                maxScale: 4.0,
+                                clipBehavior: Clip.hardEdge,
                                 child: AssetEntityImage(
                                   state.selectedEntity!,
                                   isOriginal: false,
-                                  thumbnailSize: const ThumbnailSize.square(250),
+                                  thumbnailSize: const ThumbnailSize.square(500),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Center(
@@ -209,23 +240,22 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                   },
                                 ),
                               ),
-                              if (state.selectedEntity!.type == AssetType.video)
-                                Positioned.fill(
-                                  child: Center(
-                                    child: IconTheme(
-                                      data: const IconThemeData(
-                                        color: Colors.white,
-                                        size: 50,
-                                      ),
-                                      child: widget.config.icons.play,
+                            ),
+                            if (state.selectedEntity!.type == AssetType.video)
+                              Positioned.fill(
+                                child: Center(
+                                  child: IconTheme(
+                                    data: const IconThemeData(
+                                      color: Colors.white,
+                                      size: 50,
                                     ),
+                                    child: widget.config.icons.play,
                                   ),
                                 ),
-                            ],
-                          ),
-                  ),
-
-                  // ── Album selector + grid ──────────────────────────────────
+                              ),
+                          ],
+                        ),
+                ),
                   Flexible(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -298,14 +328,15 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                         // Asset grid
                         Flexible(
                           child: state.assetsList.isEmpty
-                              ? Center(
-                                  child: state.status == HQPickerStatus.loading
-                                      ? widget.loading ?? const CircularProgressIndicator.adaptive()
-                                      : Text(
-                                          widget.textEmptyList,
-                                          style: widget.config.theme.resolvedEmptyListTextStyle,
-                                        ),
-                                )
+                              ? (widget.config.emptyWidget ??
+                                  Center(
+                                    child: state.status == HQPickerStatus.loading
+                                        ? widget.loading ?? const CircularProgressIndicator.adaptive()
+                                        : Text(
+                                            widget.textEmptyList,
+                                            style: widget.config.theme.resolvedEmptyListTextStyle,
+                                          ),
+                                  ))
                               : NotificationListener<ScrollNotification>(
                                   onNotification: (ScrollNotification scrollInfo) {
                                     if (scrollInfo.metrics.pixels >=
@@ -315,7 +346,13 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                     return false;
                                   },
                                   child: GridView.builder(
-                                    physics: const BouncingScrollPhysics(),
+                                    physics: widget.config.scrollPhysics ??
+                                        const BouncingScrollPhysics(
+                                          parent: AlwaysScrollableScrollPhysics(),
+                                        ),
+                                    scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
+                                    addRepaintBoundaries: true,
+                                    addAutomaticKeepAlives: true,
                                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 4,
                                       mainAxisSpacing: 1,
@@ -348,9 +385,8 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
             },
           ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
   void _showAlbumSelector(BuildContext context, HQPickerState state) {
     showModalBottomSheet(

@@ -4,6 +4,19 @@ import 'hq_picker_icons.dart';
 import 'hq_picker_localizations.dart';
 import 'hq_picker_theme.dart';
 
+import 'package:photo_manager/photo_manager.dart';
+
+/// Media sorting order in picker grid.
+enum HQPickerSortOrder { newestFirst, oldestFirst }
+
+/// Signature for a custom asset item tile builder.
+typedef HQAssetItemBuilder = Widget Function(
+  BuildContext context,
+  AssetEntity asset,
+  bool isSelected,
+  int? selectionIndex,
+);
+
 /// Signature for a custom snackbar/toast builder.
 ///
 /// [context] is the current [BuildContext].
@@ -18,10 +31,15 @@ class HQPickerConfig {
   final bool compressImage;
   final int compressQuality;
 
-  /// The label shown for the "Recent" album in both pickers.
-  /// Defaults to [HQPickerLocalizations.gallery] (i.e. 'Gallery').
-  /// Pass a custom value here to override it, or set it via [localizations].
-  // (resolved at call-site via localizations.gallery so no extra field needed)
+  /// Optional maximum file size in bytes (e.g. 50 * 1024 * 1024 for 50MB).
+  /// Items exceeding this size will trigger a warning.
+  final int? maxFileSize;
+
+  /// Sort order for gallery assets (newestFirst or oldestFirst).
+  final HQPickerSortOrder sortOrder;
+
+  /// Optional custom grid item tile builder.
+  final HQAssetItemBuilder? assetItemBuilder;
 
   /// Whether to show the built-in snack-bar when the user tries to confirm
   /// without selecting any media. Defaults to `true`.
@@ -31,29 +49,16 @@ class HQPickerConfig {
   final bool showSnackBar;
 
   /// Optional custom callback invoked instead of the built-in [SnackBar].
-  ///
-  /// When provided, [showSnackBar] is ignored and this callback is called
-  /// whenever a "no selection" notification would be shown.
-  ///
-  /// Example:
-  /// ```dart
-  /// onSnackBar: (context, message) {
-  ///   Fluttertoast.showToast(msg: message);
-  /// }
-  /// ```
   final HQPickerSnackBarBuilder? onSnackBar;
 
   /// Widget shown as an overlay while assets are being processed
-  /// (cropping / compression). Defaults to a centered
-  /// [CircularProgressIndicator].
-  ///
-  /// Example:
-  /// ```dart
-  /// loadingWidget: Center(
-  ///   child: MyCustomSpinner(),
-  /// ),
-  /// ```
   final Widget? loadingWidget;
+
+  /// Optional custom widget displayed when an album or tab has no items.
+  final Widget? emptyWidget;
+
+  /// Optional custom scroll physics for asset grids.
+  final ScrollPhysics? scrollPhysics;
 
   const HQPickerConfig({
     this.theme = const HQPickerTheme(),
@@ -62,9 +67,14 @@ class HQPickerConfig {
     this.enableCropping = false,
     this.compressImage = true,
     this.compressQuality = 80,
+    this.maxFileSize,
+    this.sortOrder = HQPickerSortOrder.newestFirst,
+    this.assetItemBuilder,
     this.showSnackBar = true,
     this.onSnackBar,
     this.loadingWidget,
+    this.emptyWidget,
+    this.scrollPhysics,
   });
 
   /// Shows the notification (snack-bar or custom toast) to the user.

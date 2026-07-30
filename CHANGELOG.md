@@ -1,3 +1,26 @@
+## 0.0.6
+
+### Fixed & Improved
+- Offloaded media asset file resolution (`AssetEntity.file`) to background isolates using `IsolateServices.run` in `HQPickerProcessor`. This eliminates UI thread freezing when picking large video files (up to 1GB+) or high-resolution images.
+- Added `getFile()` asynchronous helper method to `HQPickerResult` to safely resolve files in a background isolate without blocking the UI main thread.
+- Offloaded image compression (`FlutterImageCompress`) in `HQPickerMediaEditor` to background isolates.
+- Offloaded recursive file system scanning in `HQPickerMediaServices.fetchFilesByExtensions` to background isolates.
+- Ultra-Smooth 60/120fps Grid Scrolling: Added `buildWhen` state filtering to prevent full `GridView` rebuilds on scroll drag events, and configured `scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0)` for stutter-free thumbnail rendering.
+- Telegram Bottom Sheet Drag-to-Close: Configured `DraggableScrollableSheet` with `minChildSize: 0.0`, `shouldCloseOnMinExtent: true`, `snap: true`, `snapSizes: [0.55, 1.0]`, and `DraggableScrollableNotification` listener for fluid swipe-down dismissal.
+- Telegram Sheet Header Layout: Fixed top row asset overlap under the album selector app bar by adding dynamic top padding reacting to scroll position.
+- Instant Selection Response (0ms delay): Single state emission per tap combined with O(1) set lookup (`selectedAssetIdsSet.contains(id)`).
+- System Back Gesture Support: Wrapped Telegram sheet overlay in `PopScope(canPop: false)` so pressing system back closes the bottom sheet first.
+- Tactile Haptic Feedback: Integrated `HapticFeedback.selectionClick()`, `lightImpact()`, and `vibrate()` for media selection, album toggles, and max-count limits.
+- Interactive Zoom Preview: Wrapped large top preview image in Instagram picker in `InteractiveViewer` for 1.0x to 4.0x pinch-to-zoom inspection.
+- Auto Memory Cleanup: Added `PhotoManager.clearFileCache()` call on picker disposal to automatically delete temporary thumbnail files.
+- Custom Empty Widget: Added `emptyWidget` field to `HQPickerConfig` for custom empty state placeholders.
+- GIF Asset Badges: Display "GIF" label badges on animated GIF media items in grid cells.
+- Customizable Scroll Physics: Added `scrollPhysics` field to `HQPickerConfig` allowing custom grid scroll physics (`BouncingScrollPhysics`, `ClampingScrollPhysics`, etc.).
+- Selected Items Counter: Floating send button in Telegram sheet dynamically displays selected item count.
+- Maximum File Size Limit: Added `maxFileSize` property to `HQPickerConfig` to set file size limits with automatic haptic warning feedback.
+- Gallery Asset Sort Order: Added `sortOrder` (`HQPickerSortOrder.newestFirst` or `oldestFirst`) to `HQPickerConfig`.
+- Custom Grid Item Tile Builder: Added `assetItemBuilder` callback (`HQAssetItemBuilder`) to `HQPickerConfig` to fully customize asset cell overlays.
+
 ## 0.0.5
 
 ### Fixed

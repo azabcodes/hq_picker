@@ -4,11 +4,31 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../hq_picker.dart';
+import 'tools/isolate_services.dart';
 import 'tools/media_editor.dart';
 
 /// Handles asset processing (cropping / compression) and
 /// file-system picking (documents and directories).
 class HQPickerProcessor {
+  /// Resolves the underlying [File] from an [AssetEntity] in a background isolate.
+  static Future<File?> _resolveAssetFile(AssetEntity asset) async {
+    final assetId = asset.id;
+    try {
+      final path = await IsolateServices.run<String?, String>(
+        function: (id, _) async {
+          if (id == null) return null;
+          final entity = await AssetEntity.fromId(id);
+          final f = await entity?.file;
+          return f?.path;
+        },
+        input: assetId,
+      );
+      return path != null ? File(path) : await asset.file;
+    } catch (_) {
+      return await asset.file;
+    }
+  }
+
   /// Processes a list of [AssetEntity] items applying cropping / compression
   /// as configured in [config]. Shows a loading dialog while working.
   static Future<List<HQPickerResult>> processAssets(
@@ -16,9 +36,7 @@ class HQPickerProcessor {
     List<AssetEntity> assets,
     HQPickerConfig config,
   ) async {
-    if (!config.enableCropping && !config.compressImage) {
-      return assets.map((a) => HQPickerResult(asset: a)).toList();
-    }
+    if (assets.isEmpty) return [];
 
     bool dialogShown = false;
     if (context.mounted) {
@@ -33,9 +51,9 @@ class HQPickerProcessor {
     List<HQPickerResult> finalResult = [];
     try {
       for (var asset in assets) {
-        if (asset.type == AssetType.image) {
-          File? file = await asset.file;
-          if (file != null) {
+        File? file = await _resolveAssetFile(asset);
+        if (asset.type == AssetType.image && file != null) {
+          if (config.enableCropping || config.compressImage) {
             if (!context.mounted) {
               finalResult.add(HQPickerResult(asset: asset, file: file));
               continue;
@@ -47,10 +65,10 @@ class HQPickerProcessor {
             );
             finalResult.add(HQPickerResult(asset: asset, file: processed ?? file));
           } else {
-            finalResult.add(HQPickerResult(asset: asset));
+            finalResult.add(HQPickerResult(asset: asset, file: file));
           }
         } else {
-          finalResult.add(HQPickerResult(asset: asset));
+          finalResult.add(HQPickerResult(asset: asset, file: file));
         }
       }
     } finally {
