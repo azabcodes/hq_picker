@@ -4,6 +4,22 @@ A high-performance, fully customizable, multi-mode media picker for Flutter — 
 
 ---
 
+## Preview & Demo
+
+<p align="center">
+  <img src="assets/screenshot_example.png" width="30%" alt="Main Example Screen"/>
+  <img src="assets/screenshot_instagram.png" width="30%" alt="Instagram Picker Mode"/>
+  <img src="assets/screenshot_telegram.png" width="30%" alt="Telegram Sheet Mode"/>
+</p>
+
+### Video Demo
+
+<p align="center">
+  <video src="assets/demo.mov" controls width="100%" poster="assets/screenshot_example.png"></video>
+</p>
+
+---
+
 ## Features
 
 - BLoC Architecture — Zero `setState` inside the picker core. Optimized for fast rebuilds and scalability.
@@ -38,7 +54,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^0.0.6
+  hq_picker: ^0.0.8
 ```
 
 Import in your Dart code:

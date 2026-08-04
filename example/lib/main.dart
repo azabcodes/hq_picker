@@ -15,11 +15,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'HQPicker Example',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          onPrimary: Colors.black,
+          surface: Colors.black,
+          onSurface: Colors.white,
+          secondaryContainer: Color(0xFF262626),
+          onSecondaryContainer: Colors.white,
         ),
       ),
       home: const PickerHomePage(),

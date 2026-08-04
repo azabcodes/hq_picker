@@ -1,3 +1,11 @@
+## 0.0.8
+
+### Changed & Improved
+- **Showcase & Visual Assets**: Updated showcase page, README preview screenshots, and demo video assets.
+- **Monochrome Dark Theme**: Aligned default example and showcase color scheme to Material 3 Monochrome Dark.
+- **Instagram Picker Toolbar Layout**: Positioned album selector dropdown alongside camera action controls on the toolbar row below the preview image.
+- **Telegram Sheet Refinements**: Refined DraggableScrollableSheet snap points, media-only grid mode, and folder navigation popup overlay.
+
 ## 0.0.7
 
 ### Fixed
