@@ -1,7 +1,11 @@
 name: hq_picker
 description: "A stateful widget that allows users to pick media files (images, videos, audio, files) from their device."
-version: 0.0.8
+version: 0.0.9
 homepage: "https://github.com/azabcodes/hq_picker"
+
+platforms:
+  android:
+  ios:
 
 environment:
   sdk: ^3.12.0

@@ -51,11 +51,16 @@ class HQPickerMediaServices {
     BuildContext context,
     HQPickerConfig config,
   ) async {
-    final status = await Permission.storage.request();
-    if (status.isGranted) return true;
+    if (Platform.isIOS) {
+      final photoStatus = await Permission.photos.request();
+      if (photoStatus.isGranted || photoStatus.isLimited) return true;
+    } else {
+      final status = await Permission.storage.request();
+      if (status.isGranted) return true;
 
-    final photoStatus = await Permission.photos.request();
-    if (photoStatus.isGranted || photoStatus.isLimited) return true;
+      final photoStatus = await Permission.photos.request();
+      if (photoStatus.isGranted || photoStatus.isLimited) return true;
+    }
 
     // Show dialog
     if (context.mounted) {

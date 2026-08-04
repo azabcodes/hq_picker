@@ -54,13 +54,56 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^0.0.8
+  hq_picker: ^0.0.9
 ```
 
 Import in your Dart code:
 
 ```dart
 import 'package:hq_picker/hq_picker.dart';
+```
+
+---
+
+## Platform Setup
+
+### iOS Setup
+
+Add the following keys to your `ios/Runner/Info.plist`:
+
+```xml
+<!-- Photo Library Access -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>This app requires access to the photo library to pick photos and videos.</string>
+
+<!-- Photo Library Save Permission -->
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>This app requires access to save photos to your photo library.</string>
+
+<!-- Camera Access -->
+<key>NSCameraUsageDescription</key>
+<string>This app requires access to the camera to take photos and videos.</string>
+
+<!-- Microphone Access -->
+<key>NSMicrophoneUsageDescription</key>
+<string>This app requires access to the microphone for recording videos.</string>
+```
+
+> **Note**: Ensure your `ios/Podfile` target platform is set to iOS 13.0 or higher:
+> ```ruby
+> platform :ios, '13.0'
+> ```
+
+### Android Setup
+
+Add the following permissions to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+<uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+<uses-permission android:name="android.permission.CAMERA"/>
 ```
 
 ---

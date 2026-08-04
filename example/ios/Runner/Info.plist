@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app requires access to the photo library to pick images and videos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app requires access to save picked or captured photos to your library.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app requires access to the camera to take photos and videos.</string>
 	<key>NSMicrophoneUsageDescription</key>

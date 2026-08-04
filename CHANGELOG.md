@@ -1,3 +1,11 @@
+## 0.0.9
+
+### Added & Improved
+- **iOS Platform Support & Permissions**: Added explicit platform declarations (`android` and `ios`) to `pubspec.yaml`.
+- **iOS Photo Library Save Permission**: Added `NSPhotoLibraryAddUsageDescription` to example `Info.plist` to prevent app crash when saving captured camera photos on iOS.
+- **iOS Permission Optimization**: Optimized `HQPickerMediaServices.requestPermissions` to directly check and request `Permission.photos` on iOS.
+- **iOS Setup Documentation**: Added comprehensive iOS configuration guide to `README.md` detailing required `Info.plist` keys (`NSPhotoLibraryUsageDescription`, `NSPhotoLibraryAddUsageDescription`, `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`) and Podfile deployment target instructions.
+
 ## 0.0.8
 
 ### Changed & Improved
