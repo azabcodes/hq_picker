@@ -6,7 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
-import 'package:hq_picker/src/core/components/camera_preview_widget.dart';
+import 'camera_preview_widget.dart';
+import 'hq_media_preview_dialog.dart';
 import 'package:hq_picker/src/telegram/telegram_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -14,6 +15,7 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 import '../bloc/hq_picker_bloc.dart';
 import '../bloc/hq_picker_event.dart';
+import '../config/hq_picker_config.dart';
 import '../config/hq_picker_enums.dart';
 import '../tools/media_services.dart';
 
@@ -33,6 +35,8 @@ class HQPickerDefultBuilderWidget extends StatefulWidget {
 
 class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidget>
     with AutomaticKeepAliveClientMixin {
+  HQPickerConfig get config => widget.widget.config;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -499,38 +503,7 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
   }
 
   void _showFullScreenPreview(BuildContext context, AssetEntity asset) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: EdgeInsets.zero,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 4.0,
-                  child: AssetEntityImage(
-                    asset,
-                    isOriginal: true,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    HQMediaPreviewDialog.show(context, asset, config);
   }
 
   String _formatDuration(int seconds) {

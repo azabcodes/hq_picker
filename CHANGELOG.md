@@ -1,3 +1,13 @@
+## 1.0.0
+
+### Added & Redesigned
+- **Redesigned Media Preview Dialog (`HQMediaPreviewDialog`)**: Overhauled full-screen image and video preview on long press with a modern glassmorphic top header, asset details chips (media type, resolution, duration), pinch-to-zoom interactive viewer, double-tap zoom gestures, and video indicator badge.
+- **Custom Preview Dialog Builder (`previewDialogBuilder`)**: Added `HQAssetPreviewBuilder` signature and `previewDialogBuilder` parameter to `HQPickerConfig` allowing complete customization of media asset preview dialogs.
+- **Custom Confirm Button Builder (`confirmButtonBuilder`)**: Added `HQConfirmButtonBuilder` signature and `confirmButtonBuilder` parameter to `HQPickerConfig` for full control over confirm/send button widgets.
+- **Custom Instagram AppBar Builder (`appBarBuilder`)**: Added `HQAppBarBuilder` signature and `appBarBuilder` parameter to `HQPickerConfig` for customizing the AppBar in Instagram shape.
+- **Interactive Instagram Album Dropdown Title**: Updated Instagram shape AppBar title to display an interactive album selector dropdown menu button.
+- **Example App Updates**: Updated example application to demonstrate custom preview, confirm button, and Instagram AppBar builders.
+
 ## 0.0.11
 
 ### Added & Customizable

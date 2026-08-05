@@ -48,6 +48,28 @@ typedef HQPermissionDialogBuilder = Widget Function(
   VoidCallback onOpenSettings,
 );
 
+/// Signature for a custom asset preview dialog builder.
+typedef HQAssetPreviewBuilder = Widget Function(
+  BuildContext context,
+  AssetEntity asset,
+);
+
+/// Signature for a custom confirm button builder.
+typedef HQConfirmButtonBuilder = Widget Function(
+  BuildContext context,
+  List<AssetEntity> selectedAssets,
+  VoidCallback onConfirm,
+);
+
+/// Signature for a custom AppBar builder (e.g. for Instagram shape).
+typedef HQAppBarBuilder = PreferredSizeWidget Function(
+  BuildContext context,
+  AssetPathEntity? currentAlbum,
+  List<AssetEntity> selectedAssets,
+  VoidCallback onConfirm,
+  VoidCallback onBack,
+);
+
 class HQPickerConfig {
   final HQPickerTheme theme;
   final HQPickerLocalizations localizations;
@@ -108,6 +130,15 @@ class HQPickerConfig {
 
   /// Custom permission dialog builder
   final HQPermissionDialogBuilder? permissionDialogBuilder;
+
+  /// Custom asset preview dialog builder
+  final HQAssetPreviewBuilder? previewDialogBuilder;
+
+  /// Custom confirm button builder
+  final HQConfirmButtonBuilder? confirmButtonBuilder;
+
+  /// Custom AppBar builder (for Instagram shape)
+  final HQAppBarBuilder? appBarBuilder;
 
   /// Album filter & header builder
   final HQAlbumFilter? albumFilter;
@@ -170,6 +201,9 @@ class HQPickerConfig {
     this.bottomSendBarBuilder,
     this.sendButtonAnimation = true,
     this.permissionDialogBuilder,
+    this.previewDialogBuilder,
+    this.confirmButtonBuilder,
+    this.appBarBuilder,
     this.albumFilter,
     this.headerBuilder,
     this.onMaxCountReached,

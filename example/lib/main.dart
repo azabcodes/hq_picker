@@ -103,6 +103,9 @@ class _PickerHomePageState extends State<PickerHomePage>
   HQPickerFileViewMode _fileViewMode = HQPickerFileViewMode.list;
   HQPickerGestureAction _doubleTapAction = HQPickerGestureAction.none;
   HQPickerGestureAction _longPressAction = HQPickerGestureAction.preview;
+  bool _useCustomPreviewDialog = false;
+  bool _useCustomConfirmButton = false;
+  bool _useCustomAppBar = false;
 
   @override
   void initState() {
@@ -143,7 +146,7 @@ class _PickerHomePageState extends State<PickerHomePage>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '⚙️ Customization Settings',
+                          'Customization Settings',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -162,7 +165,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Grid Columns
                     Text(
                       'Grid Columns: $_gridCrossAxisCount',
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Slider(
                       value: _gridCrossAxisCount.toDouble(),
@@ -180,7 +186,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Border Radius
                     Text(
                       'Border Radius: ${_gridItemBorderRadius.toInt()}px',
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Slider(
                       value: _gridItemBorderRadius,
@@ -198,7 +207,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Selection Style
                     const Text(
                       'Selection Badge Style',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -223,7 +235,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Badge Position
                     const Text(
                       'Badge Position',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -247,10 +262,14 @@ class _PickerHomePageState extends State<PickerHomePage>
 
                     // Fullscreen preview & Max video duration
                     SwitchListTile(
-                      title: const Text('Full-Screen Preview (Long Press)',
-                          style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Long press asset tile to inspect in full-screen',
-                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      title: const Text(
+                        'Full-Screen Preview (Long Press)',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Long press asset tile to inspect in full-screen',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
                       value: _enableFullScreenPreview,
                       activeTrackColor: Colors.deepPurpleAccent,
                       onChanged: (v) {
@@ -262,7 +281,10 @@ class _PickerHomePageState extends State<PickerHomePage>
 
                     Text(
                       'Max Video Duration: ${_maxVideoDurationSeconds}s',
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Slider(
                       value: _maxVideoDurationSeconds.toDouble(),
@@ -272,7 +294,9 @@ class _PickerHomePageState extends State<PickerHomePage>
                       activeColor: Colors.deepPurpleAccent,
                       label: '${_maxVideoDurationSeconds}s',
                       onChanged: (v) {
-                        setModalState(() => _maxVideoDurationSeconds = v.toInt());
+                        setModalState(
+                          () => _maxVideoDurationSeconds = v.toInt(),
+                        );
                         setState(() {});
                       },
                     ),
@@ -282,7 +306,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // File View Mode
                     const Text(
                       'File View Mode',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -307,7 +334,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Double Tap Action
                     const Text(
                       'Double Tap Action',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -332,7 +362,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                     // Long Press Action
                     const Text(
                       'Long Press Action',
-                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Wrap(
@@ -352,6 +385,65 @@ class _PickerHomePageState extends State<PickerHomePage>
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Custom Builders Section
+                    const Text(
+                      ' Custom Builders & Overrides',
+                      style: TextStyle(
+                        color: Colors.deepPurpleAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      title: const Text(
+                        'Custom Preview Dialog Builder',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Override long press preview with custom widget',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      value: _useCustomPreviewDialog,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _useCustomPreviewDialog = v);
+                        setState(() {});
+                      },
+                    ),
+                    SwitchListTile(
+                      title: const Text(
+                        'Custom Confirm Button Builder',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Custom send/confirm button with gradient & count badge',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      value: _useCustomConfirmButton,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _useCustomConfirmButton = v);
+                        setState(() {});
+                      },
+                    ),
+                    SwitchListTile(
+                      title: const Text(
+                        'Custom AppBar Builder (Instagram)',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Override top app bar in Instagram picker shape',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      value: _useCustomAppBar,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _useCustomAppBar = v);
+                        setState(() {});
+                      },
+                    ),
 
                     const SizedBox(height: 16),
                     SizedBox(
@@ -362,7 +454,10 @@ class _PickerHomePageState extends State<PickerHomePage>
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Apply Settings', style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          'Apply Settings',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
                   ],
@@ -428,6 +523,143 @@ class _PickerHomePageState extends State<PickerHomePage>
           onAlbumChanged: (album) {
             debugPrint('HQPicker: Album changed: ${album.name}');
           },
+          // ── Custom Builders & Overrides ───────────────────
+          previewDialogBuilder: _useCustomPreviewDialog
+              ? (ctx, asset) {
+                  return Dialog(
+                    backgroundColor: const Color(0xFF1E1E2E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Custom Preview',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white70),
+                                onPressed: () => Navigator.pop(ctx),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              height: 280,
+                              width: double.infinity,
+                              child: AssetEntityImage(
+                                asset,
+                                isOriginal: true,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'ID: ${asset.id} (${asset.width}×${asset.height})',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          confirmButtonBuilder: _useCustomConfirmButton
+              ? (ctx, selectedAssets, onConfirm) {
+                  final count = selectedAssets.length;
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Colors.deepPurple, Colors.purpleAccent],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: onConfirm,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.send_rounded, color: Colors.white, size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                count > 0 ? 'Send ($count)' : 'Send',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          appBarBuilder: _useCustomAppBar
+              ? (ctx, currentAlbum, selectedAssets, onConfirm, onBack) {
+                  return AppBar(
+                    backgroundColor: const Color(0xFF181824),
+                    elevation: 2,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                      onPressed: onBack,
+                    ),
+                    title: Text(
+                      currentAlbum?.name ?? 'Media Picker',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Center(
+                          child: TextButton.icon(
+                            onPressed: onConfirm,
+                            icon: const Icon(
+                              Icons.check_circle_rounded,
+                              size: 18,
+                              color: Colors.amberAccent,
+                            ),
+                            label: Text(
+                              'Done (${selectedAssets.length})',
+                              style: const TextStyle(
+                                color: Colors.amberAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              : null,
           // ── Theming example ──────────────────────────────
           theme: HQPickerTheme(
             backgroundColor: const Color(0xFF1E1E2E),
@@ -446,7 +678,9 @@ class _PickerHomePageState extends State<PickerHomePage>
           ),
           // ── Scroll physics, sort order & custom icons ──
           sortOrder: HQPickerSortOrder.newestFirst,
-          scrollPhysics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          scrollPhysics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           icons: HQPickerIcons(
             gifBadge: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -481,7 +715,10 @@ class _PickerHomePageState extends State<PickerHomePage>
               children: [
                 Icon(Icons.inbox_outlined, size: 48, color: Colors.white54),
                 SizedBox(height: 12),
-                Text('No items found in this album', style: TextStyle(color: Colors.white54)),
+                Text(
+                  'No items found in this album',
+                  style: TextStyle(color: Colors.white54),
+                ),
               ],
             ),
           ),

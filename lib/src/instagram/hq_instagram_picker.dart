@@ -132,74 +132,106 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
     }
   }
 
+  PreferredSizeWidget _buildAppBar(BuildContext context, HQPickerState state) {
+    List<AssetEntity> selectedAssets = [];
+    if (state.selectedAssetList.isEmpty && state.selectedEntity != null) {
+      selectedAssets = [state.selectedEntity!];
+    } else {
+      selectedAssets = List.from(state.selectedAssetList);
+    }
+
+    void handleConfirm() {
+      if (selectedAssets.isNotEmpty) {
+        Navigator.pop(context, selectedAssets);
+      } else {
+        widget.config.showSelectionError(
+          context,
+          widget.config.localizations.emptyList,
+        );
+      }
+    }
+
+    if (widget.config.appBarBuilder != null) {
+      return widget.config.appBarBuilder!(
+        context,
+        state.selectedAlbum,
+        selectedAssets,
+        handleConfirm,
+        () => Navigator.pop(context),
+      );
+    }
+
+    return AppBar(
+      backgroundColor: widget.config.theme.appbarColor,
+      elevation: 0,
+      leading: IconButton(
+        icon: IconTheme(
+          data: IconThemeData(color: widget.config.theme.textColor),
+          child: widget.config.icons.back,
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: widget.title ??
+          GestureDetector(
+            onTap: () => _showAlbumSelector(context, state),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  state.selectedAlbum == null
+                      ? widget.config.localizations.gallery
+                      : (state.selectedAlbum!.name == 'Recent'
+                          ? widget.config.localizations.gallery
+                          : state.selectedAlbum!.name),
+                  style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: widget.config.theme.textColor,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 15.0),
+          child: Center(
+            child: widget.config.confirmButtonBuilder != null
+                ? widget.config.confirmButtonBuilder!(
+                    context,
+                    selectedAssets,
+                    handleConfirm,
+                  )
+                : InkResponse(
+                    onTap: handleConfirm,
+                    child: Text(
+                      widget.config.localizations.confirm,
+                      style: widget.config.theme.resolvedConfirmButtonTextStyle,
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final size = MediaQuery.of(context).size;
     return BlocProvider.value(
       value: _bloc,
-      child: Scaffold(
-        backgroundColor: widget.config.theme.backgroundColor,
-        appBar: AppBar(
-          backgroundColor: widget.config.theme.appbarColor,
-          elevation: 0,
-          leading: IconButton(
-            icon: IconTheme(
-              data: IconThemeData(color: widget.config.theme.textColor),
-              child: widget.config.icons.back,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: widget.title ??
-              BlocSelector<HQPickerBloc, HQPickerState, AssetPathEntity?>(
-                selector: (state) => state.selectedAlbum,
-                builder: (context, selectedAlbum) {
-                  return Text(
-                    selectedAlbum == null
-                        ? widget.config.localizations.gallery
-                        : (selectedAlbum.name == 'Recent'
-                            ? widget.config.localizations.gallery
-                            : selectedAlbum.name),
-                    style: widget.config.theme.resolvedAlbumNameTextStyle,
-                  );
-                },
-              ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 15.0),
-              child: BlocBuilder<HQPickerBloc, HQPickerState>(
-                builder: (context, state) {
-                  return InkResponse(
-                    child: Text(
-                      widget.config.localizations.confirm,
-                      style: widget.config.theme.resolvedConfirmButtonTextStyle,
-                    ),
-                    onTap: () {
-                      List<AssetEntity> finalSelection = [];
-                      if (state.selectedAssetList.isEmpty && state.selectedEntity != null) {
-                        finalSelection = [state.selectedEntity!];
-                      } else {
-                        finalSelection = List.from(state.selectedAssetList);
-                      }
-
-                      if (finalSelection.isNotEmpty) {
-                        Navigator.pop(context, finalSelection);
-                      } else {
-                        widget.config.showSelectionError(
-                          context,
-                          widget.config.localizations.emptyList,
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        body: BlocBuilder<HQPickerBloc, HQPickerState>(
-          builder: (context, state) {
-            return Column(
+      child: BlocBuilder<HQPickerBloc, HQPickerState>(
+        builder: (context, state) {
+          return Scaffold(
+            backgroundColor: widget.config.theme.backgroundColor,
+            appBar: _buildAppBar(context, state),
+            body: Column(
               children: [
                 // ── Large preview with InteractiveViewer (Pinch to Zoom) ─────
                 SizedBox(
@@ -395,12 +427,12 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                     ),
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       );
-    }
+  }
 
   void _showAlbumSelector(BuildContext context, HQPickerState state) {
     final filteredAlbums = widget.config.albumFilter != null

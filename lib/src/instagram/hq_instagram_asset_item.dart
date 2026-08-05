@@ -7,6 +7,7 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import '../core/bloc/hq_picker_bloc.dart';
 import '../core/bloc/hq_picker_event.dart';
 import '../core/bloc/hq_picker_state.dart';
+import '../core/components/hq_media_preview_dialog.dart';
 import '../core/config/hq_picker_config.dart';
 import '../core/config/hq_picker_enums.dart';
 
@@ -258,38 +259,7 @@ class HQAssetItem extends StatelessWidget {
   }
 
   void _showFullScreenPreview(BuildContext context, AssetEntity asset) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: EdgeInsets.zero,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 4.0,
-                  child: AssetEntityImage(
-                    asset,
-                    isOriginal: true,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    HQMediaPreviewDialog.show(context, asset, config);
   }
 
   void _showAssetInfoDialog(BuildContext context, AssetEntity asset) {

@@ -57,7 +57,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^0.0.9
+  hq_picker: ^1.0.0
 ```
 
 Import in your Dart code:
@@ -291,6 +291,43 @@ config: HQPickerConfig(
 
 ---
 
+## Custom Builders & Overrides
+
+HQPicker provides custom builder callbacks to override preview dialogs, confirm action buttons, and top app bars:
+
+```dart
+config: HQPickerConfig(
+  // Custom Media Preview Dialog (long press)
+  previewDialogBuilder: (context, asset) {
+    return Dialog(
+      child: CustomMediaViewer(asset: asset),
+    );
+  },
+
+  // Custom Confirm / Send Button
+  confirmButtonBuilder: (context, selectedAssets, onConfirm) {
+    return ElevatedButton.icon(
+      onPressed: onConfirm,
+      icon: Icon(Icons.send),
+      label: Text('Send (${selectedAssets.length})'),
+    );
+  },
+
+  // Custom Instagram AppBar Builder
+  appBarBuilder: (context, currentAlbum, selectedAssets, onConfirm, onBack) {
+    return AppBar(
+      title: Text(currentAlbum?.name ?? 'Gallery'),
+      leading: IconButton(icon: Icon(Icons.arrow_back), onPressed: onBack),
+      actions: [
+        IconButton(icon: Icon(Icons.check), onPressed: onConfirm),
+      ],
+    );
+  },
+),
+```
+
+---
+
 ## Advanced Config
 
 ```dart
@@ -359,6 +396,9 @@ for (final result in results) {
 | `bottomSendBarBuilder` | `HQBottomSendBarBuilder?` | `null` | Custom bottom send bar builder |
 | `sendButtonAnimation` | `bool` | `true` | Send FAB animation toggle |
 | `permissionDialogBuilder` | `HQPermissionDialogBuilder?` | `null` | Custom system permission dialog builder |
+| `previewDialogBuilder` | `HQAssetPreviewBuilder?` | `null` | Custom asset preview dialog builder (long press) |
+| `confirmButtonBuilder` | `HQConfirmButtonBuilder?` | `null` | Custom confirm / send button builder |
+| `appBarBuilder` | `HQAppBarBuilder?` | `null` | Custom AppBar builder for Instagram shape |
 | `albumFilter` | `HQAlbumFilter?` | `null` | Filter predicate to hide specific albums |
 | `headerBuilder` | `HQHeaderBuilder?` | `null` | Custom picker header builder |
 | `onMaxCountReached` | `VoidCallback?` | `null` | Callback when max selection limit is reached |
