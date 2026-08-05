@@ -17,6 +17,7 @@ class HQPickerLocalizations {
   final String crop;
   final String recent;
   final String all;
+  final String maxSelectTitle;
 
   const HQPickerLocalizations({
     this.confirm = 'Send',
@@ -36,6 +37,7 @@ class HQPickerLocalizations {
     this.crop = 'Crop Image',
     this.recent = 'Recent',
     this.all = 'All',
+    this.maxSelectTitle = 'Maximum selection limit is',
   });
 
   const HQPickerLocalizations.en() : this();
@@ -59,6 +61,7 @@ class HQPickerLocalizations {
         crop: 'قص الصورة',
         recent: 'الأحدث',
         all: 'الكل',
+        maxSelectTitle: 'الحد الأقصى للاختيار هو',
       );
 
   HQPickerLocalizations copyWith({
@@ -79,6 +82,7 @@ class HQPickerLocalizations {
     String? crop,
     String? recent,
     String? all,
+    String? maxSelectTitle,
   }) {
     return HQPickerLocalizations(
       confirm: confirm ?? this.confirm,
@@ -98,6 +102,7 @@ class HQPickerLocalizations {
       crop: crop ?? this.crop,
       recent: recent ?? this.recent,
       all: all ?? this.all,
+      maxSelectTitle: maxSelectTitle ?? this.maxSelectTitle,
     );
   }
 }

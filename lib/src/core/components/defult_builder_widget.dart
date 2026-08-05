@@ -14,6 +14,7 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 import '../bloc/hq_picker_bloc.dart';
 import '../bloc/hq_picker_event.dart';
+import '../config/hq_picker_enums.dart';
 import '../tools/media_services.dart';
 
 class HQPickerDefultBuilderWidget extends StatefulWidget {
@@ -184,11 +185,11 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                                   addRepaintBoundaries: true,
                                   addAutomaticKeepAlives: true,
                                   itemCount: state.assetsList.length + 1,
-                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3,
-                                    crossAxisSpacing: 3,
-                                    mainAxisSpacing: 3,
-                                    mainAxisExtent: 115,
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: widget.widget.config.gridCrossAxisCount ?? 3,
+                                    crossAxisSpacing: widget.widget.config.gridCrossAxisSpacing,
+                                    mainAxisSpacing: widget.widget.config.gridMainAxisSpacing,
+                                    childAspectRatio: widget.widget.config.gridChildAspectRatio,
                                   ),
                                   itemBuilder: (context, index) {
                                     if (index == 0) {
@@ -221,46 +222,63 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                       ),
                     ),
             ),
-            if (state.selectedAssetList.isNotEmpty)
+            if (widget.widget.config.bottomSendBarBuilder != null)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: widget.widget.config.bottomSendBarBuilder!(
+                  context,
+                  state.selectedAssetList,
+                  state.selectedFiles,
+                  () => _sendSelectedFiles(context, state),
+                ),
+              )
+            else if (state.selectedAssetList.isNotEmpty || state.selectedFiles.isNotEmpty)
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.10,
                 right: 30,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    InkResponse(
-                      onTap: () {
-                        _sendSelectedFiles(context, state);
-                      },
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundColor: theme.colorScheme.primary,
-                        child: IconTheme(
-                          data: IconThemeData(color: theme.colorScheme.onPrimary),
-                          child: widget.widget.config.icons.send,
+                child: AnimatedScale(
+                  scale: widget.widget.config.sendButtonAnimation ? 1.0 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      InkResponse(
+                        onTap: () {
+                          _sendSelectedFiles(context, state);
+                        },
+                        child: CircleAvatar(
+                          radius: 40,
+                          backgroundColor: theme.colorScheme.primary,
+                          child: IconTheme(
+                            data: IconThemeData(color: theme.colorScheme.onPrimary),
+                            child: widget.widget.config.icons.send,
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: -5,
-                      right: -5,
-                      child: Container(
-                        alignment: Alignment.center,
-                        width: 35.0,
-                        height: 35.0,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black, width: 2.0),
-                        ),
-                        child: Text(
-                          '${state.selectedAssetList.length}',
-                          style: widget.widget.config.theme.resolvedBadgeTextStyle,
+                      Positioned(
+                        bottom: -5,
+                        right: -5,
+                        child: Container(
+                          alignment: Alignment.center,
+                          width: 35.0,
+                          height: 35.0,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2.0),
+                          ),
+                          child: Text(
+                            '${state.selectedAssetList.length + state.selectedFiles.length}',
+                            style: widget.widget.config.theme.resolvedBadgeTextStyle,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -277,14 +295,54 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
   ) {
     bool isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
     int? selectionIndex = isSelected ? state.selectedAssetList.indexOf(assetEntity) + 1 : null;
+    final config = widget.widget.config;
 
-    if (widget.widget.config.assetItemBuilder != null) {
+    void handleTap() {
+      HapticFeedback.selectionClick();
+      if (config.onAssetTap != null) {
+        config.onAssetTap!(assetEntity);
+      }
+
+      if (!isSelected && maxCount > 1 && state.selectedAssetList.length >= maxCount) {
+        config.onMaxCountReached?.call();
+        config.showSelectionError(
+          context,
+          '${config.localizations.maxSelectTitle} $maxCount',
+        );
+        return;
+      }
+
+      if (assetEntity.type == AssetType.video) {
+        if (config.minVideoDuration != null &&
+            assetEntity.duration < config.minVideoDuration!.inSeconds) {
+          config.showSelectionError(
+            context,
+            'Video duration is shorter than minimum allowed (${config.minVideoDuration!.inSeconds}s)',
+          );
+          return;
+        }
+        if (config.maxVideoDuration != null &&
+            assetEntity.duration > config.maxVideoDuration!.inSeconds) {
+          config.showSelectionError(
+            context,
+            'Video duration exceeds maximum allowed (${config.maxVideoDuration!.inSeconds}s)',
+          );
+          return;
+        }
+      }
+
+      context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+    }
+
+    if (config.assetItemBuilder != null) {
       return GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+        onTap: handleTap,
+        onLongPress: () {
+          if (config.enableFullScreenPreview) {
+            _showFullScreenPreview(context, assetEntity);
+          }
         },
-        child: widget.widget.config.assetItemBuilder!(
+        child: config.assetItemBuilder!(
           context,
           assetEntity,
           isSelected,
@@ -293,107 +351,185 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
       );
     }
 
+    final borderRadius = config.gridItemBorderRadius ?? BorderRadius.zero;
+
+    Alignment resolveBadgeAlignment() {
+      switch (config.badgePosition) {
+        case HQPickerBadgePosition.topRight:
+          return Alignment.topRight;
+        case HQPickerBadgePosition.topLeft:
+          return Alignment.topLeft;
+        case HQPickerBadgePosition.bottomRight:
+          return Alignment.bottomRight;
+        case HQPickerBadgePosition.bottomLeft:
+          return Alignment.bottomLeft;
+      }
+    }
+
     return RepaintBoundary(
       child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          context.read<HQPickerBloc>().add(ToggleAssetSelectionEvent(assetEntity, maxCount));
+        onTap: handleTap,
+        onLongPress: () {
+          if (config.enableFullScreenPreview) {
+            _showFullScreenPreview(context, assetEntity);
+          }
         },
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: AssetEntityImage(
-                assetEntity,
-                isOriginal: false,
-                thumbnailSize: const ThumbnailSize.square(200),
-                thumbnailFormat: ThumbnailFormat.jpeg,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.white10,
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Center(
-                    child: IconTheme(
-                      data: const IconThemeData(color: Colors.red),
-                      child: widget.widget.config.icons.error,
-                    ),
-                  );
-                },
-              ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: isSelected && config.selectionStyle == HQPickerSelectionStyle.borderOnly
+                  ? Border.all(color: config.theme.badgeBackgroundColor, width: 3)
+                  : null,
             ),
-            if (assetEntity.type == AssetType.video)
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconTheme(
-                        data: const IconThemeData(color: Colors.white, size: 12),
-                        child: widget.widget.config.icons.play,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        _formatDuration(assetEntity.duration),
-                        style: widget.widget.config.theme.resolvedVideoDurationTextStyle,
-                      ),
-                    ],
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: AssetEntityImage(
+                    assetEntity,
+                    isOriginal: false,
+                    thumbnailSize: const ThumbnailSize.square(200),
+                    thumbnailFormat: ThumbnailFormat.jpeg,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.white10,
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: IconTheme(
+                          data: const IconThemeData(color: Colors.red),
+                          child: config.icons.error,
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-            if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
-                assetEntity.mimeType?.contains('gif') == true)
-              Positioned(
-                bottom: 4,
-                left: 4,
-                child: widget.widget.config.icons.gifBadge ??
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                if (assetEntity.type == AssetType.video)
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        'GIF',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconTheme(
+                            data: const IconThemeData(color: Colors.white, size: 12),
+                            child: config.icons.play,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            _formatDuration(assetEntity.duration),
+                            style: config.theme.resolvedVideoDurationTextStyle,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
+                    assetEntity.mimeType?.contains('gif') == true)
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: config.icons.gifBadge ??
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: const Text(
+                            'GIF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
+                  ),
+                if (isSelected)
+                  Positioned.fill(
+                    child: AnimatedScale(
+                      scale: config.enableSelectionAnimation ? 1.0 : 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOutCubic,
+                      child: Container(
+                        alignment: resolveBadgeAlignment(),
+                        padding: const EdgeInsets.all(5.0),
+                        decoration: BoxDecoration(
+                          color: config.selectionStyle == HQPickerSelectionStyle.borderOnly
+                              ? Colors.transparent
+                              : Colors.black38,
+                        ),
+                        child: config.selectionStyle == HQPickerSelectionStyle.borderOnly
+                            ? const SizedBox.shrink()
+                            : Container(
+                                decoration: BoxDecoration(
+                                  color: config.theme.badgeBackgroundColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(width: 1.5, color: Colors.white),
+                                ),
+                                padding: const EdgeInsets.all(6.0),
+                                child: config.selectionStyle == HQPickerSelectionStyle.checkMark
+                                    ? Icon(Icons.check, size: 14, color: config.theme.badgeTextColor)
+                                    : Text(
+                                        '$selectionIndex',
+                                        style: config.theme.resolvedBadgeTextStyle,
+                                      ),
+                              ),
                       ),
                     ),
-              ),
-            if (isSelected)
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreenPreview(BuildContext context, AssetEntity asset) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
               Positioned.fill(
-                child: AnimatedScale(
-                  scale: 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  curve: Curves.easeOutCubic,
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      border: Border.all(width: 8, color: Colors.white70),
-                    ),
-                    child: IconTheme(
-                      data: const IconThemeData(color: Colors.white, size: 30),
-                      child: widget.widget.config.icons.check,
-                    ),
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 4.0,
+                  child: AssetEntityImage(
+                    asset,
+                    isOriginal: true,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
-          ],
-        ),
-      ),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

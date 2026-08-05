@@ -260,70 +260,83 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        // Album toolbar
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: widget.config.theme.backgroundDropDownColor,
-                          ),
-                          child: Row(
-                            children: [
-                              if (state.selectedAlbum != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 15.0),
-                                  child: GestureDetector(
-                                    onTap: () => _showAlbumSelector(context, state),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          state.selectedAlbum!.name == 'Recent'
-                                              ? widget.config.localizations.recent
-                                              : state.selectedAlbum!.name,
-                                          style: widget.config.theme.resolvedAlbumNameTextStyle
-                                              .copyWith(fontSize: 20.0),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 5.0),
-                                          child: IconTheme(
-                                            data: IconThemeData(
-                                              color: widget.config.theme.iconGalleryColor,
-                                            ),
-                                            child: widget.config.icons.dropdown,
+                        // Album toolbar / headerBuilder
+                        if (widget.config.headerBuilder != null)
+                          widget.config.headerBuilder!(
+                            context,
+                            state.selectedAlbum,
+                            widget.config.albumFilter != null
+                                ? state.albumList.where(widget.config.albumFilter!).toList()
+                                : state.albumList,
+                            (album) {
+                              widget.config.onAlbumChanged?.call(album);
+                              _bloc.add(ChangeAlbumEvent(album));
+                            },
+                          )
+                        else
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: widget.config.theme.backgroundDropDownColor,
+                            ),
+                            child: Row(
+                              children: [
+                                if (state.selectedAlbum != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 15.0),
+                                    child: GestureDetector(
+                                      onTap: () => _showAlbumSelector(context, state),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            state.selectedAlbum!.name == 'Recent'
+                                                ? widget.config.localizations.recent
+                                                : state.selectedAlbum!.name,
+                                            style: widget.config.theme.resolvedAlbumNameTextStyle
+                                                .copyWith(fontSize: 20.0),
                                           ),
-                                        ),
-                                      ],
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 5.0),
+                                            child: IconTheme(
+                                              data: IconThemeData(
+                                                color: widget.config.theme.iconGalleryColor,
+                                              ),
+                                              child: widget.config.icons.dropdown,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              const Spacer(),
+                                const Spacer(),
 
-                              // ── Camera buttons (conditional on requestType) ─
-                              if (widget.requestType == HQPickerRequestType.image ||
-                                  widget.requestType == HQPickerRequestType.all)
-                                IconButton(
-                                  onPressed: () async => _pickMedia(ImageSource.camera),
-                                  tooltip: 'Photo',
-                                  icon: IconTheme(
-                                    data: IconThemeData(
-                                      color: widget.config.theme.iconCameraColor,
+                                // ── Camera buttons (conditional on requestType) ─
+                                if (widget.requestType == HQPickerRequestType.image ||
+                                    widget.requestType == HQPickerRequestType.all)
+                                  IconButton(
+                                    onPressed: () async => _pickMedia(ImageSource.camera),
+                                    tooltip: 'Photo',
+                                    icon: IconTheme(
+                                      data: IconThemeData(
+                                        color: widget.config.theme.iconCameraColor,
+                                      ),
+                                      child: widget.config.icons.camera,
                                     ),
-                                    child: widget.config.icons.camera,
                                   ),
-                                ),
-                              if (widget.requestType == HQPickerRequestType.video ||
-                                  widget.requestType == HQPickerRequestType.all)
-                                IconButton(
-                                  onPressed: () async => _pickMedia(ImageSource.camera),
-                                  tooltip: 'Video',
-                                  icon: IconTheme(
-                                    data: IconThemeData(
-                                      color: widget.config.theme.iconCameraColor,
+                                if (widget.requestType == HQPickerRequestType.video ||
+                                    widget.requestType == HQPickerRequestType.all)
+                                  IconButton(
+                                    onPressed: () async => _pickMedia(ImageSource.camera),
+                                    tooltip: 'Video',
+                                    icon: IconTheme(
+                                      data: IconThemeData(
+                                        color: widget.config.theme.iconCameraColor,
+                                      ),
+                                      child: widget.config.icons.cameraVideo,
                                     ),
-                                    child: widget.config.icons.cameraVideo,
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
 
                         // Asset grid
                         Flexible(
@@ -353,10 +366,11 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                     scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
                                     addRepaintBoundaries: true,
                                     addAutomaticKeepAlives: true,
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 4,
-                                      mainAxisSpacing: 1,
-                                      crossAxisSpacing: 1,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: widget.config.gridCrossAxisCount ?? 4,
+                                      mainAxisSpacing: widget.config.gridMainAxisSpacing,
+                                      crossAxisSpacing: widget.config.gridCrossAxisSpacing,
+                                      childAspectRatio: widget.config.gridChildAspectRatio,
                                     ),
                                     itemCount:
                                         state.assetsList.length + (state.isLoadingMore ? 1 : 0),
@@ -389,6 +403,10 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
     }
 
   void _showAlbumSelector(BuildContext context, HQPickerState state) {
+    final filteredAlbums = widget.config.albumFilter != null
+        ? state.albumList.where(widget.config.albumFilter!).toList()
+        : state.albumList;
+
     showModalBottomSheet(
       backgroundColor: widget.config.theme.backgroundDropDownColor,
       context: context,
@@ -396,11 +414,12 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
       builder: (_) {
         return ListView.builder(
           physics: const BouncingScrollPhysics(),
-          itemCount: state.albumList.length,
+          itemCount: filteredAlbums.length,
           itemBuilder: (context, index) {
-            final album = state.albumList[index];
+            final album = filteredAlbums[index];
             return ListTile(
               onTap: () {
+                widget.config.onAlbumChanged?.call(album);
                 _bloc.add(ChangeAlbumEvent(album));
                 Navigator.pop(context);
               },

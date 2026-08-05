@@ -354,6 +354,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
 
                                       return ListTile(
                                         onTap: () {
+                                          widget.config.onAlbumChanged?.call(album);
                                           bloc.add(ChangeAlbumEvent(album));
                                           albumOverlayEntry?.remove();
                                         },

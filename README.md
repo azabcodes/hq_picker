@@ -28,16 +28,19 @@ A high-performance, fully customizable, multi-mode media picker for Flutter — 
 - Instant Selection Response — Single state emission per tap combined with O(1) set lookup (`selectedAssetIdsSet`) for 0ms selection delay.
 - Telegram Drag-to-Close Sheet — Draggable bottom sheet with snap points (`0.55`, `1.0`) and smooth swipe-down-to-close behavior.
 - Interactive Zoom Preview — Pinch-to-zoom (1.0x to 4.0x) on the top preview image in the Instagram picker.
+- Deep Customization System — Complete control over grid columns (`gridCrossAxisCount`), cell spacing, border radius (`gridItemBorderRadius`), badge styles (`number`, `checkMark`, `borderOnly`), and positions.
+- Video & File Constraints — Enforce minimum/maximum video duration (`minVideoDuration`, `maxVideoDuration`) and file size limits (`minFileSize`, `maxFileSize`).
+- Full-Screen Preview & Details Modal — Built-in full-screen preview and asset information dialog on custom gestures (`doubleTapAction`, `longPressAction`).
+- Custom File & Document Views — Toggle between List and Grid modes (`fileViewMode`) with custom extension icon mappings (`customFileTypeIcons`).
+- Custom Bottom Send Bar & FAB Animation — Override the send action bar via `bottomSendBarBuilder` or customize floating action button animations.
+- Custom Permission Dialog — Pass `permissionDialogBuilder` to supply app-specific permission dialogs.
+- Album Filters & Header Builders — Filter unwanted albums (`albumFilter`) and pass custom header widgets (`headerBuilder`).
 - Tactile Haptic Feedback — Native feedback (`HapticFeedback.selectionClick()`, `lightImpact()`, `vibrate()`) for media selection, album toggles, and max-count limits.
 - System Back Gesture Support — Integrated `PopScope` to catch Android and iOS system back gestures and close picker sheets gracefully.
 - Auto Memory Cleanup — Automatically clears temporary thumbnail caches (`PhotoManager.clearFileCache()`) on picker disposal.
 - Custom Empty Widget — Pass `emptyWidget` to `HQPickerConfig` for custom empty state illustrations when an album has no assets.
 - Two Beautiful Picker Styles — Instagram full-screen preview + Telegram draggable bottom sheet.
 - Unified `HQPicker` API — One entry-point for all shapes: `instagram`, `telegram`, `document`, `directory`.
-- Conditional Camera Buttons — In the Instagram picker the camera / video-camera buttons are shown only when the `requestType` supports them.
-- Pagination Built-in — Lazy-loads media in chunks of 60 to prevent memory leaks and freezing.
-- Full Text-Style Theming — Every `Text` widget in the picker (badge, album name, video duration, dialog, snack-bar…) is individually styleable via `HQPickerTheme`.
-- Cropping & Compression — Built-in image editing with adjustable quality, shown behind a configurable loading overlay.
 - Localization — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations`.
 - Custom SnackBar / Toast — Provide `onSnackBar` to replace the built-in SnackBar with any toast/overlay you prefer.
 - File System Support — Native document and directory pickers via `file_selector`.
@@ -336,10 +339,35 @@ for (final result in results) {
 | `icons` | `HQPickerIcons` | Material icons | All picker icons |
 | `compressImage` | `bool` | `true` | Compress images before returning |
 | `compressQuality` | `int` | `80` | JPEG compression quality (0–100) |
-| `showSnackBar` | `bool` | `true` | Show built-in SnackBar on empty selection |
+| `gridCrossAxisCount` | `int?` | `null` | Custom number of columns in picker grid |
+| `gridCrossAxisSpacing` | `double` | `2.0` | Horizontal spacing between cells |
+| `gridMainAxisSpacing` | `double` | `2.0` | Vertical spacing between cells |
+| `gridChildAspectRatio` | `double` | `1.0` | Aspect ratio of grid cells |
+| `gridItemBorderRadius` | `BorderRadius?` | `null` | Rounded corners for asset cells |
+| `selectionStyle` | `HQPickerSelectionStyle` | `number` | Selection style (`number`, `checkMark`, `borderOnly`) |
+| `badgePosition` | `HQPickerBadgePosition` | `topRight` | Position of selection badge on cell |
+| `enableSelectionAnimation` | `bool` | `true` | Scale animation on tile selection |
+| `minVideoDuration` | `Duration?` | `null` | Minimum allowed video duration |
+| `maxVideoDuration` | `Duration?` | `null` | Maximum allowed video duration |
+| `enableFullScreenPreview` | `bool` | `true` | Long press full-screen asset preview modal |
+| `preferredCameraLens` | `HQPickerCameraLens` | `back` | In-app camera direction (`back` / `front`) |
+| `cameraCaptureMode` | `HQPickerCameraCaptureMode` | `all` | Camera capture mode (`all`, `photoOnly`, `videoOnly`) |
+| `fileViewMode` | `HQPickerFileViewMode` | `list` | Document/file layout mode (`list` or `grid`) |
+| `customFileTypeIcons` | `Map<String, Widget>?` | `null` | Custom icons for file extensions |
+| `doubleTapAction` | `HQPickerGestureAction` | `none` | Action on double-tap (`select`, `preview`, `showInfo`) |
+| `longPressAction` | `HQPickerGestureAction` | `preview` | Action on long-press (`select`, `preview`, `showInfo`) |
+| `bottomSendBarBuilder` | `HQBottomSendBarBuilder?` | `null` | Custom bottom send bar builder |
+| `sendButtonAnimation` | `bool` | `true` | Send FAB animation toggle |
+| `permissionDialogBuilder` | `HQPermissionDialogBuilder?` | `null` | Custom system permission dialog builder |
+| `albumFilter` | `HQAlbumFilter?` | `null` | Filter predicate to hide specific albums |
+| `headerBuilder` | `HQHeaderBuilder?` | `null` | Custom picker header builder |
+| `onMaxCountReached` | `VoidCallback?` | `null` | Callback when max selection limit is reached |
+| `onAssetTap` | `Function?` | `null` | Callback on asset cell tap |
+| `onAlbumChanged` | `Function?` | `null` | Callback on album selection change |
+| `showSnackBar` | `bool` | `true` | Show built-in SnackBar on selection error |
 | `onSnackBar` | `Function?` | `null` | Custom SnackBar / toast callback |
-| `loadingWidget` | `Widget?` | `CircularProgressIndicator` | Overlay shown during processing |
-| `emptyWidget` | `Widget?` | `null` | Custom widget displayed when an album or tab has no assets |
+| `loadingWidget` | `Widget?` | `CircularProgressIndicator` | Overlay shown during asset processing |
+| `emptyWidget` | `Widget?` | `null` | Custom widget displayed when an album is empty |
 | `maxFileSize` | `int?` | `null` | Max file size in bytes with warning feedback |
 | `sortOrder` | `HQPickerSortOrder` | `newestFirst` | Asset sorting order (`newestFirst` or `oldestFirst`) |
 | `assetItemBuilder` | `HQAssetItemBuilder?` | `null` | Custom tile builder for grid asset items |

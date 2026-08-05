@@ -93,6 +93,17 @@ class _PickerHomePageState extends State<PickerHomePage>
   late final TabController _tabController;
   List<HQPickerResult> _results = [];
 
+  // ── Customization Settings State ──────────────────────────────────────────
+  int _gridCrossAxisCount = 3;
+  double _gridItemBorderRadius = 12.0;
+  HQPickerSelectionStyle _selectionStyle = HQPickerSelectionStyle.checkMark;
+  HQPickerBadgePosition _badgePosition = HQPickerBadgePosition.topRight;
+  bool _enableFullScreenPreview = true;
+  int _maxVideoDurationSeconds = 60;
+  HQPickerFileViewMode _fileViewMode = HQPickerFileViewMode.list;
+  HQPickerGestureAction _doubleTapAction = HQPickerGestureAction.none;
+  HQPickerGestureAction _longPressAction = HQPickerGestureAction.preview;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +114,265 @@ class _PickerHomePageState extends State<PickerHomePage>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _openCustomizationBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E1E2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          '⚙️ Customization Settings',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const Divider(color: Colors.white24),
+                    const SizedBox(height: 10),
+
+                    // Grid Columns
+                    Text(
+                      'Grid Columns: $_gridCrossAxisCount',
+                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    Slider(
+                      value: _gridCrossAxisCount.toDouble(),
+                      min: 2,
+                      max: 5,
+                      divisions: 3,
+                      activeColor: Colors.deepPurpleAccent,
+                      label: '$_gridCrossAxisCount',
+                      onChanged: (v) {
+                        setModalState(() => _gridCrossAxisCount = v.toInt());
+                        setState(() {});
+                      },
+                    ),
+
+                    // Border Radius
+                    Text(
+                      'Border Radius: ${_gridItemBorderRadius.toInt()}px',
+                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    Slider(
+                      value: _gridItemBorderRadius,
+                      min: 0,
+                      max: 24,
+                      divisions: 12,
+                      activeColor: Colors.deepPurpleAccent,
+                      label: '${_gridItemBorderRadius.toInt()}px',
+                      onChanged: (v) {
+                        setModalState(() => _gridItemBorderRadius = v);
+                        setState(() {});
+                      },
+                    ),
+
+                    // Selection Style
+                    const Text(
+                      'Selection Badge Style',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: HQPickerSelectionStyle.values.map((style) {
+                        final isSel = _selectionStyle == style;
+                        return ChoiceChip(
+                          label: Text(style.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _selectionStyle = style);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Badge Position
+                    const Text(
+                      'Badge Position',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: HQPickerBadgePosition.values.map((pos) {
+                        final isSel = _badgePosition == pos;
+                        return ChoiceChip(
+                          label: Text(pos.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _badgePosition = pos);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Fullscreen preview & Max video duration
+                    SwitchListTile(
+                      title: const Text('Full-Screen Preview (Long Press)',
+                          style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Long press asset tile to inspect in full-screen',
+                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      value: _enableFullScreenPreview,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _enableFullScreenPreview = v);
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    Text(
+                      'Max Video Duration: ${_maxVideoDurationSeconds}s',
+                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    Slider(
+                      value: _maxVideoDurationSeconds.toDouble(),
+                      min: 15,
+                      max: 180,
+                      divisions: 11,
+                      activeColor: Colors.deepPurpleAccent,
+                      label: '${_maxVideoDurationSeconds}s',
+                      onChanged: (v) {
+                        setModalState(() => _maxVideoDurationSeconds = v.toInt());
+                        setState(() {});
+                      },
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // File View Mode
+                    const Text(
+                      'File View Mode',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: HQPickerFileViewMode.values.map((mode) {
+                        final isSel = _fileViewMode == mode;
+                        return ChoiceChip(
+                          label: Text(mode.name.toUpperCase()),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _fileViewMode = mode);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Double Tap Action
+                    const Text(
+                      'Double Tap Action',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: HQPickerGestureAction.values.map((act) {
+                        final isSel = _doubleTapAction == act;
+                        return ChoiceChip(
+                          label: Text(act.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _doubleTapAction = act);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Long Press Action
+                    const Text(
+                      'Long Press Action',
+                      style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: HQPickerGestureAction.values.map((act) {
+                        final isSel = _longPressAction == act;
+                        return ChoiceChip(
+                          label: Text(act.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _longPressAction = act);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Apply Settings', style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _pickMedia({
@@ -128,6 +398,36 @@ class _PickerHomePageState extends State<PickerHomePage>
         allowedExtensions: allowedExtensions,
         config: HQPickerConfig(
           compressImage: false,
+          // ── Grid & Item Customization ─────────────────────
+          gridCrossAxisCount: _gridCrossAxisCount,
+          gridCrossAxisSpacing: 4.0,
+          gridMainAxisSpacing: 4.0,
+          gridItemBorderRadius: BorderRadius.circular(_gridItemBorderRadius),
+          // ── Selection Badge & Animation Customization ──────
+          selectionStyle: _selectionStyle,
+          badgePosition: _badgePosition,
+          enableSelectionAnimation: true,
+          // ── Fullscreen Preview & Constraints ───────────────
+          enableFullScreenPreview: _enableFullScreenPreview,
+          maxVideoDuration: Duration(seconds: _maxVideoDurationSeconds),
+          // ── File View Mode & Gestures ─────────────────────
+          fileViewMode: _fileViewMode,
+          doubleTapAction: _doubleTapAction,
+          longPressAction: _longPressAction,
+          customFileTypeIcons: {
+            '.pdf': const Icon(Icons.picture_as_pdf, color: Colors.red),
+            '.docx': const Icon(Icons.description, color: Colors.blue),
+          },
+          // ── Callbacks ─────────────────────────────────────
+          onMaxCountReached: () {
+            debugPrint('HQPicker: Max count limit reached!');
+          },
+          onAssetTap: (asset) {
+            debugPrint('HQPicker: Asset tapped: ${asset.id}');
+          },
+          onAlbumChanged: (album) {
+            debugPrint('HQPicker: Album changed: ${album.name}');
+          },
           // ── Theming example ──────────────────────────────
           theme: HQPickerTheme(
             backgroundColor: const Color(0xFF1E1E2E),
@@ -221,6 +521,13 @@ class _PickerHomePageState extends State<PickerHomePage>
       appBar: AppBar(
         title: const Text('HQPicker Example'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Customize Settings',
+            onPressed: _openCustomizationBottomSheet,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

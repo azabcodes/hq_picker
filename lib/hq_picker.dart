@@ -21,6 +21,7 @@ export 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 export 'src/core/components/camera_image_setting.dart';
 export 'src/core/config/hq_picker_config.dart';
+export 'src/core/config/hq_picker_enums.dart';
 export 'src/core/config/hq_picker_icons.dart';
 export 'src/core/config/hq_picker_localizations.dart';
 export 'src/core/config/hq_picker_result.dart';

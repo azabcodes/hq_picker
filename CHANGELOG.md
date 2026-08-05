@@ -1,3 +1,18 @@
+## 0.0.11
+
+### Added & Customizable
+- **Grid Layout Customization**: Added `gridCrossAxisCount`, `gridCrossAxisSpacing`, `gridMainAxisSpacing`, `gridChildAspectRatio`, and `gridItemBorderRadius`.
+- **Selection Badge Visuals & Position**: Added `selectionStyle` (`number`, `checkMark`, `borderOnly`), `badgePosition` (`topRight`, `topLeft`, `bottomRight`, `bottomLeft`), and `enableSelectionAnimation`.
+- **Video & File Constraints**: Added `minVideoDuration`, `maxVideoDuration`, and `minFileSize` validation checks with automatic error notification.
+- **Full-Screen Preview & Video Behavior**: Added `enableFullScreenPreview` modal dialog on long press, `autoPlayVideoPreview`, and `muteVideoPreview`.
+- **In-App Camera Settings**: Added `preferredCameraLens` (`back`/`front`), `cameraCaptureMode` (`all`/`photoOnly`/`videoOnly`), and `cameraOverlayBuilder`.
+- **File & Document Views**: Added `fileViewMode` (`list` vs `grid`), `enableDocumentPreview`, and `customFileTypeIcons` map.
+- **Gestures & Actions**: Added `doubleTapAction` and `longPressAction` (`none`, `select`, `preview`, `showInfo`) with built-in asset information modal dialog.
+- **Custom Send Bar & FAB Animation**: Added `bottomSendBarBuilder` and `sendButtonAnimation` toggle for send action floating action button.
+- **Custom Permission Dialog**: Added `permissionDialogBuilder` to override default system permission dialogs.
+- **Album Filtering & Headers**: Added `albumFilter` predicate, custom `headerBuilder`, and callbacks (`onMaxCountReached`, `onAssetTap`, `onAlbumChanged`).
+- **Interactive Customization Showcase**: Added interactive settings sheet in example app and showcase web page.
+
 ## 0.0.10
 
 ### Removed & Fixed
