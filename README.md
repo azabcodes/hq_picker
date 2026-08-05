@@ -293,7 +293,6 @@ config: HQPickerConfig(
 ```dart
 config: HQPickerConfig(
   // Image processing
-  enableCropping: true,
   compressImage: true,
   compressQuality: 80,
 
@@ -335,7 +334,6 @@ for (final result in results) {
 | `theme` | `HQPickerTheme` | default dark | All colors & text styles |
 | `localizations` | `HQPickerLocalizations` | English | All UI strings |
 | `icons` | `HQPickerIcons` | Material icons | All picker icons |
-| `enableCropping` | `bool` | `false` | Enable image crop after pick |
 | `compressImage` | `bool` | `true` | Compress images before returning |
 | `compressQuality` | `int` | `80` | JPEG compression quality (0–100) |
 | `showSnackBar` | `bool` | `true` | Show built-in SnackBar on empty selection |

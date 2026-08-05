@@ -127,13 +127,12 @@ class _PickerHomePageState extends State<PickerHomePage>
         requestType: requestType,
         allowedExtensions: allowedExtensions,
         config: HQPickerConfig(
-          enableCropping: false,
           compressImage: false,
           // ── Theming example ──────────────────────────────
-          theme: const HQPickerTheme(
-            backgroundColor: Color(0xFF1E1E2E),
-            appbarColor: Color(0xFF1E1E2E),
-            backgroundDropDownColor: Color(0xFF2A2D3E),
+          theme: HQPickerTheme(
+            backgroundColor: const Color(0xFF1E1E2E),
+            appbarColor: const Color(0xFF1E1E2E),
+            backgroundDropDownColor: const Color(0xFF2A2D3E),
             confirmButtonColor: Colors.deepPurple,
             badgeBackgroundColor: Colors.deepPurple,
           ),

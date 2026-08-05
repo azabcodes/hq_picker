@@ -1,6 +1,6 @@
 name: hq_picker
 description: "A stateful widget that allows users to pick media files (images, videos, audio, files) from their device."
-version: 0.0.9
+version: 0.0.10
 homepage: "https://github.com/azabcodes/hq_picker"
 
 platforms:
@@ -24,7 +24,6 @@ dependencies:
   lucide_icons_flutter: ^3.1.15
   native_android_path: ^0.0.5
   file_selector: ^1.1.0
-  image_cropper: ^12.2.1
   flutter_image_compress: ^2.5.1
   permission_handler: ^13.0.0
   path_provider: ^2.1.6

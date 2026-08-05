@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../config/hq_picker_config.dart';
@@ -15,27 +14,6 @@ class HQPickerMediaEditor {
     HQPickerConfig config,
   ) async {
     File? result = imageFile;
-
-    // 1. Cropping (Requires interactive native UI on Main Thread)
-    if (config.enableCropping) {
-      final croppedFile = await ImageCropper().cropImage(
-        sourcePath: result.path,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: config.localizations.crop,
-            toolbarColor: config.theme.appbarColor,
-            toolbarWidgetColor: config.theme.textColor,
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(title: config.localizations.crop),
-        ],
-      );
-
-      if (croppedFile != null) {
-        result = File(croppedFile.path);
-      }
-    }
 
     // 2. Compression (Offloaded to background isolate)
     if (config.compressImage) {
@@ -83,4 +61,3 @@ class HQPickerMediaEditor {
     return result;
   }
 }
-

@@ -27,7 +27,6 @@ class HQPickerConfig {
   final HQPickerTheme theme;
   final HQPickerLocalizations localizations;
   final HQPickerIcons icons;
-  final bool enableCropping;
   final bool compressImage;
   final int compressQuality;
 
@@ -64,7 +63,6 @@ class HQPickerConfig {
     this.theme = const HQPickerTheme(),
     this.localizations = const HQPickerLocalizations(),
     this.icons = const HQPickerIcons(),
-    this.enableCropping = false,
     this.compressImage = true,
     this.compressQuality = 80,
     this.maxFileSize,

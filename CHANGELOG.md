@@ -1,3 +1,10 @@
+## 0.0.10
+
+### Removed & Fixed
+- **Removed Image Cropping Dependency**: Completely removed `image_cropper` package and `enableCropping` configuration to eliminate native cropping activity bloat and boost overall picking performance.
+- **Fixed Parent Route Exit Bug**: Fixed `showDialog` dismiss logic in `HQPickerProcessor.processAssets` by passing explicit `dialogContext`, preventing unintended popping of parent screen navigation routes.
+- **Main Thread Asset Resolution**: Streamlined `AssetEntity` file resolution on main thread to avoid raw isolate platform channel exceptions.
+
 ## 0.0.9
 
 ### Added & Improved

@@ -4,37 +4,24 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../hq_picker.dart';
-import 'tools/isolate_services.dart';
 import 'tools/media_editor.dart';
 
 /// Handles asset processing (cropping / compression) and
 /// file-system picking (documents and directories).
 class HQPickerProcessor {
-  /// Resolves the underlying [File] from an [AssetEntity] in a background isolate.
+  /// Resolves the underlying [File] from an [AssetEntity].
   /// Uses [originFile] first to avoid copying large files (500MB+) to cache and causing OOM crashes.
   static Future<File?> _resolveAssetFile(AssetEntity asset) async {
-    final assetId = asset.id;
     try {
-      final path = await IsolateServices.run<String?, String>(
-        function: (id, _) async {
-          if (id == null) return null;
-          final entity = await AssetEntity.fromId(id);
-          final f = await entity?.originFile ?? await entity?.file;
-          return f?.path;
-        },
-        input: assetId,
-      );
-      if (path != null && path.isNotEmpty) {
-        return File(path);
-      }
-      return await asset.originFile ?? await asset.file;
+      final f = await asset.originFile ?? await asset.file;
+      return f;
     } catch (_) {
       return await asset.originFile ?? await asset.file;
     }
   }
 
   /// Processes a list of [AssetEntity] items applying cropping / compression
-  /// as configured in [config]. Shows a loading dialog while working.
+  /// as configured in [config]. Shows a loading dialog only if processing is required.
   static Future<List<HQPickerResult>> processAssets(
     BuildContext context,
     List<AssetEntity> assets,
@@ -42,14 +29,18 @@ class HQPickerProcessor {
   ) async {
     if (assets.isEmpty) return [];
 
-    bool dialogShown = false;
-    if (context.mounted) {
+    final bool needsProcessing = config.compressImage;
+    BuildContext? dialogContext;
+
+    if (needsProcessing && context.mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => config.loadingWidget ?? const Center(child: CircularProgressIndicator()),
+        builder: (ctx) {
+          dialogContext = ctx;
+          return config.loadingWidget ?? const Center(child: CircularProgressIndicator());
+        },
       );
-      dialogShown = true;
     }
 
     List<HQPickerResult> finalResult = [];
@@ -57,7 +48,7 @@ class HQPickerProcessor {
       for (var asset in assets) {
         File? file = await _resolveAssetFile(asset);
         if (asset.type == AssetType.image && file != null) {
-          if (config.enableCropping || config.compressImage) {
+          if (config.compressImage) {
             if (!context.mounted) {
               finalResult.add(HQPickerResult(asset: asset, file: file));
               continue;
@@ -76,8 +67,8 @@ class HQPickerProcessor {
         }
       }
     } finally {
-      if (dialogShown && context.mounted) {
-        Navigator.pop(context);
+      if (dialogContext != null && dialogContext!.mounted) {
+        Navigator.pop(dialogContext!);
       }
     }
     return finalResult;
