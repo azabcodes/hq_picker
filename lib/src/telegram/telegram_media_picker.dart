@@ -91,11 +91,13 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
     _controller = DraggableScrollableController();
 
     _bloc = HQPickerBloc()
-      ..add(LoadAlbumsEvent(
-        requestType: widget.requestType,
-        fetchFileCounts: true,
-        sortOrder: widget.config.sortOrder,
-      ));
+      ..add(
+        LoadAlbumsEvent(
+          requestType: widget.requestType,
+          fetchFileCounts: true,
+          sortOrder: widget.config.sortOrder,
+        ),
+      );
 
     _controller.addListener(() {
       _bloc.add(UpdateScrollSizeEvent(_controller.size));
@@ -107,7 +109,10 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
 
   @override
   void dispose() {
-    PhotoManager.clearFileCache();
+    // See HQInstagramPicker.dispose() for why the previous
+    // PhotoManager.clearFileCache() call was removed — it cleared the
+    // app-wide thumbnail cache, not just this picker's, forcing every
+    // thumbnail to be re-decoded the next time any picker opens.
     _controller.dispose();
     _bloc.close();
     _overlayEntry?.remove();
@@ -293,6 +298,15 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
     OverlayEntry? albumOverlayEntry;
     final controller = ScrollController();
 
+    // Every path that removes this overlay must also dispose the
+    // ScrollController created for it — previously the controller was never
+    // disposed (only `albumOverlayEntry?.remove()` was called), leaking one
+    // ScrollController per album-selector open.
+    void closeAlbumSelector() {
+      albumOverlayEntry?.remove();
+      controller.dispose();
+    }
+
     albumOverlayEntry = OverlayEntry(
       builder: (context) => BlocProvider.value(
         value: bloc,
@@ -302,12 +316,10 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
             if (didPop) {
               return;
             }
-            albumOverlayEntry?.remove();
+            closeAlbumSelector();
           },
           child: GestureDetector(
-            onTap: () {
-              albumOverlayEntry?.remove();
-            },
+            onTap: closeAlbumSelector,
             child: Material(
               color: Colors.transparent,
               child: Stack(
@@ -356,7 +368,7 @@ class HQPickerTelegramMediaPickersState extends State<HQPickerTelegramMediaPicke
                                         onTap: () {
                                           widget.config.onAlbumChanged?.call(album);
                                           bloc.add(ChangeAlbumEvent(album));
-                                          albumOverlayEntry?.remove();
+                                          closeAlbumSelector();
                                         },
                                         title: Row(
                                           children: [

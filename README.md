@@ -57,7 +57,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^1.0.0
+  hq_picker: ^1.0.1
 ```
 
 Import in your Dart code:

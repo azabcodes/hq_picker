@@ -1,3 +1,24 @@
+## 1.0.1
+
+### Performance & Improvements
+- **Optimized File Icon Lookups**: Moved file icon and color lookup maps in `getIconForFile()` to module-level `const` maps, preventing them from being recreated for every file item.
+- **Immutable Extension Lists**: Converted Telegram picker extension lists to `const` collections to prevent accidental mutation and reduce unnecessary allocations.
+- **Optimized Selected Asset Lookups**: Added cached `selectedAssetIdsSet` and `selectedAssetIndexById` to provide O(1) selection and index lookups instead of repeatedly rebuilding sets or calling `indexOf()`.
+- **Parallel Album Loading**: Updated album loading in `HQPickerBloc` to load albums concurrently using `Future.wait()` instead of sequential processing.
+- **Shared Asset Visual Helpers**: Added `hq_picker_asset_visuals.dart` to centralize GIF detection, duration formatting, and selection badge alignment logic shared across asset tiles.
+- **Reduced Instagram Picker Rebuilds**: Added `buildWhen` filtering to prevent unnecessary rebuilds caused by unrelated picker state changes.
+- **Stable Grid Item Keys**: Added stable keys to Instagram picker grid items for more predictable widget reuse during rebuilds and scrolling.
+- **Selection Badge Animation Fix**: Fixed the `AnimatedScale` selection badge so its animation state actually changes instead of receiving the same value in both states.
+- **Telegram ScrollController Cleanup**: Fixed `ScrollController` lifecycle handling in the Telegram album selector to prevent resource leaks.
+- **Removed Picker File Cache Cleanup**: Removed `PhotoManager.clearFileCache()` calls from picker disposal to avoid unnecessary file-cache clearing during picker lifecycle.
+
+### Fixes
+- **File Extension Fix**: Corrected the `wbs` extension to `.wbs` in the Telegram file extension list.
+- **Removed Unnecessary Async**: Removed the unnecessary `async` modifier from `getPublicDirectories()`.
+- **Added `HQPickerConfig.copyWith()`**: Added `copyWith()` to `HQPickerConfig` for consistent and easier configuration updates without recreating the entire configuration object.
+
+
+
 ## 1.0.0
 
 ### Added & Redesigned

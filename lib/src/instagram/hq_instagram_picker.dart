@@ -57,22 +57,26 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
   void initState() {
     super.initState();
     _bloc = HQPickerBloc()
-      ..add(LoadAlbumsEvent(
-        requestType: widget.requestType,
-        fetchFileCounts: false,
-        sortOrder: widget.config.sortOrder,
-      ))
+      ..add(
+        LoadAlbumsEvent(
+          requestType: widget.requestType,
+          fetchFileCounts: false,
+          sortOrder: widget.config.sortOrder,
+        ),
+      )
       ..add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
   }
 
   @override
   void didUpdateWidget(covariant HQInstagramPicker oldWidget) {
     if (oldWidget.requestType != widget.requestType) {
-      _bloc.add(LoadAlbumsEvent(
-        requestType: widget.requestType,
-        fetchFileCounts: false,
-        sortOrder: widget.config.sortOrder,
-      ));
+      _bloc.add(
+        LoadAlbumsEvent(
+          requestType: widget.requestType,
+          fetchFileCounts: false,
+          sortOrder: widget.config.sortOrder,
+        ),
+      );
     }
     if (oldWidget.maxCount != widget.maxCount) {
       _bloc.add(InitMultipleSelectionEvent(isMultiple: widget.maxCount > 1));
@@ -82,7 +86,12 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
 
   @override
   void dispose() {
-    PhotoManager.clearFileCache();
+    // NOTE: previously called PhotoManager.clearFileCache() here. That wipes
+    // the *entire* app-wide thumbnail cache every time a single picker
+    // instance closes, forcing every thumbnail (in this picker or any other
+    // photo_manager consumer) to be re-decoded from scratch next time. If a
+    // hard cache reset is genuinely needed for a specific product reason,
+    // do it explicitly at that call site instead of unconditionally here.
     _bloc.close();
     super.dispose();
   }
@@ -171,7 +180,8 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
         ),
         onPressed: () => Navigator.pop(context),
       ),
-      title: widget.title ??
+      title:
+          widget.title ??
           GestureDetector(
             onTap: () => _showAlbumSelector(context, state),
             child: Row(
@@ -181,8 +191,8 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                   state.selectedAlbum == null
                       ? widget.config.localizations.gallery
                       : (state.selectedAlbum!.name == 'Recent'
-                          ? widget.config.localizations.gallery
-                          : state.selectedAlbum!.name),
+                            ? widget.config.localizations.gallery
+                            : state.selectedAlbum!.name),
                   style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -227,6 +237,22 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
     return BlocProvider.value(
       value: _bloc,
       child: BlocBuilder<HQPickerBloc, HQPickerState>(
+        // This screen never reads isDraggableOpen/isFile/isVideo/isAudio/
+        // scrollSize/selectedFiles/audioFiles/deviceFiles (those only matter
+        // to the Telegram bottom-sheet picker), so skip rebuilding the whole
+        // Scaffold — including the grid and preview — when only those change.
+        buildWhen: (previous, current) =>
+            previous.status != current.status ||
+            previous.albumList != current.albumList ||
+            previous.selectedAlbum != current.selectedAlbum ||
+            previous.assetsList != current.assetsList ||
+            previous.selectedAssetList != current.selectedAssetList ||
+            previous.selectedEntity != current.selectedEntity ||
+            previous.isLoadingMore != current.isLoadingMore ||
+            previous.hasMore != current.hasMore ||
+            previous.capturedImage != current.capturedImage ||
+            previous.isMultiple != current.isMultiple ||
+            previous.errorMessage != current.errorMessage,
         builder: (context, state) {
           return Scaffold(
             backgroundColor: widget.config.theme.backgroundColor,
@@ -288,150 +314,154 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                           ],
                         ),
                 ),
-                  Flexible(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        // Album toolbar / headerBuilder
-                        if (widget.config.headerBuilder != null)
-                          widget.config.headerBuilder!(
-                            context,
-                            state.selectedAlbum,
-                            widget.config.albumFilter != null
-                                ? state.albumList.where(widget.config.albumFilter!).toList()
-                                : state.albumList,
-                            (album) {
-                              widget.config.onAlbumChanged?.call(album);
-                              _bloc.add(ChangeAlbumEvent(album));
-                            },
-                          )
-                        else
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: widget.config.theme.backgroundDropDownColor,
-                            ),
-                            child: Row(
-                              children: [
-                                if (state.selectedAlbum != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 15.0),
-                                    child: GestureDetector(
-                                      onTap: () => _showAlbumSelector(context, state),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            state.selectedAlbum!.name == 'Recent'
-                                                ? widget.config.localizations.recent
-                                                : state.selectedAlbum!.name,
-                                            style: widget.config.theme.resolvedAlbumNameTextStyle
-                                                .copyWith(fontSize: 20.0),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 5.0),
-                                            child: IconTheme(
-                                              data: IconThemeData(
-                                                color: widget.config.theme.iconGalleryColor,
-                                              ),
-                                              child: widget.config.icons.dropdown,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                const Spacer(),
-
-                                // ── Camera buttons (conditional on requestType) ─
-                                if (widget.requestType == HQPickerRequestType.image ||
-                                    widget.requestType == HQPickerRequestType.all)
-                                  IconButton(
-                                    onPressed: () async => _pickMedia(ImageSource.camera),
-                                    tooltip: 'Photo',
-                                    icon: IconTheme(
-                                      data: IconThemeData(
-                                        color: widget.config.theme.iconCameraColor,
-                                      ),
-                                      child: widget.config.icons.camera,
-                                    ),
-                                  ),
-                                if (widget.requestType == HQPickerRequestType.video ||
-                                    widget.requestType == HQPickerRequestType.all)
-                                  IconButton(
-                                    onPressed: () async => _pickMedia(ImageSource.camera),
-                                    tooltip: 'Video',
-                                    icon: IconTheme(
-                                      data: IconThemeData(
-                                        color: widget.config.theme.iconCameraColor,
-                                      ),
-                                      child: widget.config.icons.cameraVideo,
-                                    ),
-                                  ),
-                              ],
-                            ),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      // Album toolbar / headerBuilder
+                      if (widget.config.headerBuilder != null)
+                        widget.config.headerBuilder!(
+                          context,
+                          state.selectedAlbum,
+                          widget.config.albumFilter != null
+                              ? state.albumList.where(widget.config.albumFilter!).toList()
+                              : state.albumList,
+                          (album) {
+                            widget.config.onAlbumChanged?.call(album);
+                            _bloc.add(ChangeAlbumEvent(album));
+                          },
+                        )
+                      else
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: widget.config.theme.backgroundDropDownColor,
                           ),
+                          child: Row(
+                            children: [
+                              if (state.selectedAlbum != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 15.0),
+                                  child: GestureDetector(
+                                    onTap: () => _showAlbumSelector(context, state),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          state.selectedAlbum!.name == 'Recent'
+                                              ? widget.config.localizations.recent
+                                              : state.selectedAlbum!.name,
+                                          style: widget.config.theme.resolvedAlbumNameTextStyle
+                                              .copyWith(fontSize: 20.0),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 5.0),
+                                          child: IconTheme(
+                                            data: IconThemeData(
+                                              color: widget.config.theme.iconGalleryColor,
+                                            ),
+                                            child: widget.config.icons.dropdown,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              const Spacer(),
 
-                        // Asset grid
-                        Flexible(
-                          child: state.assetsList.isEmpty
-                              ? (widget.config.emptyWidget ??
+                              // ── Camera buttons (conditional on requestType) ─
+                              if (widget.requestType == HQPickerRequestType.image ||
+                                  widget.requestType == HQPickerRequestType.all)
+                                IconButton(
+                                  onPressed: () async => _pickMedia(ImageSource.camera),
+                                  tooltip: 'Photo',
+                                  icon: IconTheme(
+                                    data: IconThemeData(
+                                      color: widget.config.theme.iconCameraColor,
+                                    ),
+                                    child: widget.config.icons.camera,
+                                  ),
+                                ),
+                              if (widget.requestType == HQPickerRequestType.video ||
+                                  widget.requestType == HQPickerRequestType.all)
+                                IconButton(
+                                  onPressed: () async => _pickMedia(ImageSource.camera),
+                                  tooltip: 'Video',
+                                  icon: IconTheme(
+                                    data: IconThemeData(
+                                      color: widget.config.theme.iconCameraColor,
+                                    ),
+                                    child: widget.config.icons.cameraVideo,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+
+                      // Asset grid
+                      Flexible(
+                        child: state.assetsList.isEmpty
+                            ? (widget.config.emptyWidget ??
                                   Center(
                                     child: state.status == HQPickerStatus.loading
-                                        ? widget.loading ?? const CircularProgressIndicator.adaptive()
+                                        ? widget.loading ??
+                                              const CircularProgressIndicator.adaptive()
                                         : Text(
                                             widget.textEmptyList,
                                             style: widget.config.theme.resolvedEmptyListTextStyle,
                                           ),
                                   ))
-                              : NotificationListener<ScrollNotification>(
-                                  onNotification: (ScrollNotification scrollInfo) {
-                                    if (scrollInfo.metrics.pixels >=
-                                        scrollInfo.metrics.maxScrollExtent - 200) {
-                                      _bloc.add(LoadMoreAssetsEvent());
-                                    }
-                                    return false;
-                                  },
-                                  child: GridView.builder(
-                                    physics: widget.config.scrollPhysics ??
-                                        const BouncingScrollPhysics(
-                                          parent: AlwaysScrollableScrollPhysics(),
-                                        ),
-                                    scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
-                                    addRepaintBoundaries: true,
-                                    addAutomaticKeepAlives: true,
-                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: widget.config.gridCrossAxisCount ?? 4,
-                                      mainAxisSpacing: widget.config.gridMainAxisSpacing,
-                                      crossAxisSpacing: widget.config.gridCrossAxisSpacing,
-                                      childAspectRatio: widget.config.gridChildAspectRatio,
-                                    ),
-                                    itemCount:
-                                        state.assetsList.length + (state.isLoadingMore ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index < state.assetsList.length) {
-                                        return HQAssetItem(
-                                          assetEntity: state.assetsList[index],
-                                          state: state,
-                                          maxCount: widget.maxCount,
-                                          config: widget.config,
-                                        );
-                                      } else {
-                                        return const Center(
-                                          child: CircularProgressIndicator.adaptive(),
-                                        );
-                                      }
-                                    },
+                            : NotificationListener<ScrollNotification>(
+                                onNotification: (ScrollNotification scrollInfo) {
+                                  if (scrollInfo.metrics.pixels >=
+                                      scrollInfo.metrics.maxScrollExtent - 200) {
+                                    _bloc.add(LoadMoreAssetsEvent());
+                                  }
+                                  return false;
+                                },
+                                child: GridView.builder(
+                                  physics:
+                                      widget.config.scrollPhysics ??
+                                      const BouncingScrollPhysics(
+                                        parent: AlwaysScrollableScrollPhysics(),
+                                      ),
+                                  scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
+                                  addRepaintBoundaries: true,
+                                  addAutomaticKeepAlives: true,
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: widget.config.gridCrossAxisCount ?? 4,
+                                    mainAxisSpacing: widget.config.gridMainAxisSpacing,
+                                    crossAxisSpacing: widget.config.gridCrossAxisSpacing,
+                                    childAspectRatio: widget.config.gridChildAspectRatio,
                                   ),
+                                  itemCount:
+                                      state.assetsList.length + (state.isLoadingMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index < state.assetsList.length) {
+                                      final asset = state.assetsList[index];
+                                      return HQAssetItem(
+                                        key: ValueKey(asset.id),
+                                        assetEntity: asset,
+                                        state: state,
+                                        maxCount: widget.maxCount,
+                                        config: widget.config,
+                                      );
+                                    } else {
+                                      return const Center(
+                                        child: CircularProgressIndicator.adaptive(),
+                                      );
+                                    }
+                                  },
                                 ),
-                        ),
-                      ],
-                    ),
+                              ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showAlbumSelector(BuildContext context, HQPickerState state) {

@@ -9,7 +9,7 @@ import 'hq_picker_event.dart';
 import 'hq_picker_state.dart';
 
 class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
-  HQPickerBloc() : super(const HQPickerState()) {
+  HQPickerBloc() : super(HQPickerState()) {
     on<LoadAlbumsEvent>(_onLoadAlbums);
     on<ChangeAlbumEvent>(_onChangeAlbum);
     on<LoadMoreAssetsEvent>(_onLoadMoreAssets);
@@ -145,18 +145,25 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
       List<Uint8List?> firstImages = [];
 
       if (event.fetchFileCounts) {
-        for (var album in albums) {
-          final count = await album.assetCountAsync;
-          fileCounts.add(count);
-          Uint8List? firstImageBytes;
-          final firstAssets = await album.getAssetListRange(start: 0, end: 1);
-          if (firstAssets.isNotEmpty) {
-            firstImageBytes = await firstAssets.first.thumbnailDataWithSize(
-              const ThumbnailSize.square(100),
-            );
-          }
-          firstImages.add(firstImageBytes);
-        }
+        // Fetch each album's count + cover thumbnail concurrently instead of
+        // sequentially. With N albums the old code paid ~2×N round trips
+        // back-to-back; Future.wait lets the platform channel handle them
+        // together while preserving album order in the results.
+        final perAlbumResults = await Future.wait(
+          albums.map((album) async {
+            final count = await album.assetCountAsync;
+            Uint8List? firstImageBytes;
+            final firstAssets = await album.getAssetListRange(start: 0, end: 1);
+            if (firstAssets.isNotEmpty) {
+              firstImageBytes = await firstAssets.first.thumbnailDataWithSize(
+                const ThumbnailSize.square(100),
+              );
+            }
+            return (count, firstImageBytes);
+          }),
+        );
+        fileCounts = [for (final r in perAlbumResults) r.$1];
+        firstImages = [for (final r in perAlbumResults) r.$2];
       }
 
       final selectedAlbum = albums.first;
@@ -275,10 +282,12 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
         HapticFeedback.vibrate();
       }
     }
-    emit(state.copyWith(
-      selectedAssetList: currentList,
-      selectedEntity: () => event.entity,
-    ));
+    emit(
+      state.copyWith(
+        selectedAssetList: currentList,
+        selectedEntity: () => event.entity,
+      ),
+    );
   }
 
   void _onSetSelectedAssets(SetSelectedAssetsEvent event, Emitter<HQPickerState> emit) {

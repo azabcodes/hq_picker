@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// A helper class to manage isolates for executing background tasks.
@@ -28,8 +26,14 @@ class IsolateServices {
     final exitPort = ReceivePort();
     final progressPort = ReceivePort();
 
-    final rootToken = RootIsolateToken.instance!;
+    final rootToken = RootIsolateToken.instance;
 
+    if (rootToken == null) {
+      throw IsolateHelperException(
+        'RootIsolateToken is not available. '
+        'Ensure Flutter bindings are initialized before running an isolate.',
+      );
+    }
     // Spawn the isolate
     final isolate = await Isolate.spawn<_IsolateModel<T, U>>(
       _isolateEntry,
@@ -173,7 +177,7 @@ class IsolateServices {
 }
 
 /// Model for passing data to the isolate.
-class _IsolateModel<T, U> extends Equatable {
+class _IsolateModel<T, U> {
   final RootIsolateToken token;
   final Future<T> Function(U? input, SendPort? progressPort) function;
   final U? input;
@@ -191,17 +195,6 @@ class _IsolateModel<T, U> extends Equatable {
     this.exitPort,
     this.progressPort,
   });
-
-  @override
-  List<Object?> get props => [
-    token,
-    function,
-    input,
-    answerPort,
-    errorPort,
-    exitPort,
-    progressPort,
-  ];
 }
 
 /// Custom exception class for isolate errors.
@@ -217,67 +210,5 @@ class IsolateHelperException implements Exception {
     return 'IsolateHelperException: $message\n'
         'Error: $error\n'
         'StackTrace: ${stackTrace ?? 'Not available'}';
-  }
-}
-
-void main() async {
-  Future<int> computeSum(int? limit, SendPort? progressPort) async {
-    int sum = 0;
-    for (int i = 0; i <= limit!; i++) {
-      sum += i;
-      if (i % 5000 == 0) {
-        progressPort?.send({
-          'progress': i,
-          'message': 'Processing up to $i...',
-        });
-        await Future.delayed(const Duration(milliseconds: 1));
-      }
-    }
-    return sum;
-  }
-
-  try {
-    final result = await IsolateServices.run<int, int>(
-      function: computeSum,
-      input: 50000,
-      timeout: const Duration(seconds: 20),
-      onProgress: (progress) {
-        // Handle progress updates
-        if (progress is Map) {
-          if (kDebugMode) {
-            print(
-              'Progress: ${progress['progress']} - ${progress['message']}',
-            );
-          }
-        }
-      },
-      cancelOnProgress: (progress) {
-        // Cancel if progress exceeds a certain threshold
-        if (progress is Map && progress['progress'] > 20000) {
-          if (kDebugMode) {
-            print(
-              'Cancelling computation at progress: ${progress['progress']}',
-            );
-          }
-          return true;
-        }
-        return false;
-      },
-      logger: (log) {
-        if (kDebugMode) {
-          print('LOG: $log');
-        }
-      },
-    );
-
-    // Print the final result
-    if (kDebugMode) {
-      print('Computation completed. The sum is: $result');
-    }
-  } catch (e) {
-    // Handle any errors
-    if (kDebugMode) {
-      print('Error occurred: $e');
-    }
   }
 }

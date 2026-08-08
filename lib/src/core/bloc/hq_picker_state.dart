@@ -36,31 +36,117 @@ class HQPickerState extends Equatable {
   final List<FileSystemEntity> audioFiles;
   final List<FileSystemEntity> deviceFiles;
 
-  const HQPickerState({
-    this.status = HQPickerStatus.initial,
-    this.albumList = const [],
-    this.selectedAlbum,
-    this.assetsList = const [],
-    this.selectedAssetList = const [],
-    this.selectedEntity,
-    this.currentPage = 0,
-    this.isLoadingMore = false,
-    this.hasMore = true,
-    this.pageSize = 60,
-    this.albumFileCounts = const [],
-    this.albumFirstImages = const [],
-    this.errorMessage,
-    this.capturedImage,
-    this.isDraggableOpen = false,
-    this.isFile = false,
-    this.isVideo = false,
-    this.isAudio = false,
-    this.isMultiple = false,
-    this.scrollSize = 0.5,
-    this.selectedFiles = const [],
-    this.audioFiles = const [],
-    this.deviceFiles = const [],
+  /// Precomputed lookup structures for [selectedAssetList].
+  ///
+  /// Every visible grid tile reads "is this asset selected" and "what's its
+  /// selection number" once per build. Previously those were derived live
+  /// (`selectedAssetList.map((e) => e.id).toSet()` and `List.indexOf`), which
+  /// meant every tile paid an O(selection count) cost on every rebuild —
+  /// O(visible tiles × selections) overall. These are now computed exactly
+  /// once, whenever [selectedAssetList] actually changes (see [copyWith]),
+  /// and simply reused otherwise.
+  final Set<String> selectedAssetIdsSet;
+  final Map<String, int> selectedAssetIndexById;
+
+  /// Internal constructor — all fields (including the derived selection
+  /// lookups) must be supplied explicitly and consistently. Prefer the
+  /// [HQPickerState.new] factory or [copyWith] instead of calling this
+  /// directly.
+  const HQPickerState._raw({
+    required this.status,
+    required this.albumList,
+    required this.selectedAlbum,
+    required this.assetsList,
+    required this.selectedAssetList,
+    required this.selectedEntity,
+    required this.currentPage,
+    required this.isLoadingMore,
+    required this.hasMore,
+    required this.pageSize,
+    required this.albumFileCounts,
+    required this.albumFirstImages,
+    required this.errorMessage,
+    required this.capturedImage,
+    required this.isDraggableOpen,
+    required this.isFile,
+    required this.isVideo,
+    required this.isAudio,
+    required this.isMultiple,
+    required this.scrollSize,
+    required this.selectedFiles,
+    required this.audioFiles,
+    required this.deviceFiles,
+    required this.selectedAssetIdsSet,
+    required this.selectedAssetIndexById,
   });
+
+  factory HQPickerState({
+    HQPickerStatus status = HQPickerStatus.initial,
+    List<AssetPathEntity> albumList = const [],
+    AssetPathEntity? selectedAlbum,
+    List<AssetEntity> assetsList = const [],
+    List<AssetEntity> selectedAssetList = const [],
+    AssetEntity? selectedEntity,
+    int currentPage = 0,
+    bool isLoadingMore = false,
+    bool hasMore = true,
+    int pageSize = 60,
+    List<int> albumFileCounts = const [],
+    List<Uint8List?> albumFirstImages = const [],
+    String? errorMessage,
+    File? capturedImage,
+    bool isDraggableOpen = false,
+    bool isFile = false,
+    bool isVideo = false,
+    bool isAudio = false,
+    bool isMultiple = false,
+    double scrollSize = 0.5,
+    List<FileSystemEntity> selectedFiles = const [],
+    List<FileSystemEntity> audioFiles = const [],
+    List<FileSystemEntity> deviceFiles = const [],
+  }) {
+    return HQPickerState._raw(
+      status: status,
+      albumList: albumList,
+      selectedAlbum: selectedAlbum,
+      assetsList: assetsList,
+      selectedAssetList: selectedAssetList,
+      selectedEntity: selectedEntity,
+      currentPage: currentPage,
+      isLoadingMore: isLoadingMore,
+      hasMore: hasMore,
+      pageSize: pageSize,
+      albumFileCounts: albumFileCounts,
+      albumFirstImages: albumFirstImages,
+      errorMessage: errorMessage,
+      capturedImage: capturedImage,
+      isDraggableOpen: isDraggableOpen,
+      isFile: isFile,
+      isVideo: isVideo,
+      isAudio: isAudio,
+      isMultiple: isMultiple,
+      scrollSize: scrollSize,
+      selectedFiles: selectedFiles,
+      audioFiles: audioFiles,
+      deviceFiles: deviceFiles,
+      selectedAssetIdsSet: _buildIdSet(selectedAssetList),
+      selectedAssetIndexById: _buildIndexMap(selectedAssetList),
+    );
+  }
+
+  static Set<String> _buildIdSet(List<AssetEntity> list) {
+    if (list.isEmpty) return const {};
+    return list.map((e) => e.id).toSet();
+  }
+
+  static Map<String, int> _buildIndexMap(List<AssetEntity> list) {
+    if (list.isEmpty) return const {};
+    final map = <String, int>{};
+    for (var i = 0; i < list.length; i++) {
+      map[list[i].id] = i;
+    }
+    return map;
+  }
 
   HQPickerState copyWith({
     HQPickerStatus? status,
@@ -87,12 +173,20 @@ class HQPickerState extends Equatable {
     List<FileSystemEntity>? audioFiles,
     List<FileSystemEntity>? deviceFiles,
   }) {
-    return HQPickerState(
+    final newSelectedAssetList = selectedAssetList ?? this.selectedAssetList;
+    // Only recompute the derived lookup structures when the selection list
+    // is actually being replaced — every other state change (paging in more
+    // assets, switching albums, toggling loading flags, etc.) reuses the
+    // existing Set/Map for free.
+    final selectionChanged =
+        selectedAssetList != null && !identical(selectedAssetList, this.selectedAssetList);
+
+    return HQPickerState._raw(
       status: status ?? this.status,
       albumList: albumList ?? this.albumList,
       selectedAlbum: selectedAlbum ?? this.selectedAlbum,
       assetsList: assetsList ?? this.assetsList,
-      selectedAssetList: selectedAssetList ?? this.selectedAssetList,
+      selectedAssetList: newSelectedAssetList,
       selectedEntity: selectedEntity != null ? selectedEntity() : this.selectedEntity,
       currentPage: currentPage ?? this.currentPage,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
@@ -111,10 +205,14 @@ class HQPickerState extends Equatable {
       selectedFiles: selectedFiles ?? this.selectedFiles,
       audioFiles: audioFiles ?? this.audioFiles,
       deviceFiles: deviceFiles ?? this.deviceFiles,
+      selectedAssetIdsSet: selectionChanged
+          ? _buildIdSet(newSelectedAssetList)
+          : selectedAssetIdsSet,
+      selectedAssetIndexById: selectionChanged
+          ? _buildIndexMap(newSelectedAssetList)
+          : selectedAssetIndexById,
     );
   }
-
-  Set<String> get selectedAssetIdsSet => selectedAssetList.map((e) => e.id).toSet();
 
   @override
   List<Object?> get props => [

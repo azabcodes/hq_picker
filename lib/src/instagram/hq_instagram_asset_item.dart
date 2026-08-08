@@ -10,6 +10,7 @@ import '../core/bloc/hq_picker_state.dart';
 import '../core/components/hq_media_preview_dialog.dart';
 import '../core/config/hq_picker_config.dart';
 import '../core/config/hq_picker_enums.dart';
+import '../core/tools/hq_picker_asset_visuals.dart';
 
 /// A standalone widget for a single grid asset item in the Instagram-style picker.
 class HQAssetItem extends StatelessWidget {
@@ -26,24 +27,16 @@ class HQAssetItem extends StatelessWidget {
     required this.config,
   });
 
-  Alignment _resolveBadgeAlignment() {
-    switch (config.badgePosition) {
-      case HQPickerBadgePosition.topRight:
-        return Alignment.topRight;
-      case HQPickerBadgePosition.topLeft:
-        return Alignment.topLeft;
-      case HQPickerBadgePosition.bottomRight:
-        return Alignment.bottomRight;
-      case HQPickerBadgePosition.bottomLeft:
-        return Alignment.bottomLeft;
-    }
-  }
+  Alignment _resolveBadgeAlignment() =>
+      HQPickerAssetVisuals.resolveBadgeAlignment(config.badgePosition);
 
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<HQPickerBloc>();
     final isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
-    final selectionIndex = isSelected ? state.selectedAssetList.indexOf(assetEntity) + 1 : null;
+    final selectionIndex = isSelected
+        ? (state.selectedAssetIndexById[assetEntity.id] ?? -1) + 1
+        : null;
 
     void handleTap() {
       HapticFeedback.selectionClick();
@@ -180,12 +173,12 @@ class HQAssetItem extends StatelessWidget {
                   ),
 
                 // ── GIF badge ────────────────────────────────────────────────────
-                if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
-                    assetEntity.mimeType?.contains('gif') == true)
+                if (HQPickerAssetVisuals.isGif(assetEntity))
                   Positioned(
                     bottom: 4,
                     left: 4,
-                    child: config.icons.gifBadge ??
+                    child:
+                        config.icons.gifBadge ??
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
@@ -224,15 +217,21 @@ class HQAssetItem extends StatelessWidget {
                           curve: Curves.easeOutCubic,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? config.theme.badgeBackgroundColor : Colors.white12,
+                              color: isSelected
+                                  ? config.theme.badgeBackgroundColor
+                                  : Colors.white12,
                               shape: BoxShape.circle,
                               border: Border.all(width: 1.5, color: Colors.white),
                             ),
                             padding: const EdgeInsets.all(6.0),
                             child: config.selectionStyle == HQPickerSelectionStyle.checkMark
                                 ? (isSelected
-                                    ? Icon(Icons.check, size: 14, color: config.theme.badgeTextColor)
-                                    : const SizedBox(width: 14, height: 14))
+                                      ? Icon(
+                                          Icons.check,
+                                          size: 14,
+                                          color: config.theme.badgeTextColor,
+                                        )
+                                      : const SizedBox(width: 14, height: 14))
                                 : Text(
                                     isSelected ? '$selectionIndex' : '',
                                     style: config.theme.resolvedBadgeTextStyle.copyWith(
@@ -252,11 +251,7 @@ class HQAssetItem extends StatelessWidget {
     );
   }
 
-  static String _formatDuration(int seconds) {
-    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$mins:$secs';
-  }
+  static String _formatDuration(int seconds) => HQPickerAssetVisuals.formatDuration(seconds);
 
   void _showFullScreenPreview(BuildContext context, AssetEntity asset) {
     HQMediaPreviewDialog.show(context, asset, config);
@@ -275,15 +270,27 @@ class HQAssetItem extends StatelessWidget {
             children: [
               Text('ID: ${asset.id}', style: config.theme.resolvedDialogContentTextStyle),
               const SizedBox(height: 6),
-              Text('Type: ${asset.type.name.toUpperCase()}', style: config.theme.resolvedDialogContentTextStyle),
+              Text(
+                'Type: ${asset.type.name.toUpperCase()}',
+                style: config.theme.resolvedDialogContentTextStyle,
+              ),
               const SizedBox(height: 6),
-              Text('Resolution: ${asset.width} x ${asset.height}', style: config.theme.resolvedDialogContentTextStyle),
+              Text(
+                'Resolution: ${asset.width} x ${asset.height}',
+                style: config.theme.resolvedDialogContentTextStyle,
+              ),
               if (asset.type == AssetType.video) ...[
                 const SizedBox(height: 6),
-                Text('Duration: ${_formatDuration(asset.duration)}', style: config.theme.resolvedDialogContentTextStyle),
+                Text(
+                  'Duration: ${_formatDuration(asset.duration)}',
+                  style: config.theme.resolvedDialogContentTextStyle,
+                ),
               ],
               const SizedBox(height: 6),
-              Text('Created: ${asset.createDateTime}', style: config.theme.resolvedDialogContentTextStyle),
+              Text(
+                'Created: ${asset.createDateTime}',
+                style: config.theme.resolvedDialogContentTextStyle,
+              ),
             ],
           ),
           actions: [
@@ -297,6 +304,3 @@ class HQAssetItem extends StatelessWidget {
     );
   }
 }
-
-
-

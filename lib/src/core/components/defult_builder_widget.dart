@@ -6,8 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:hq_picker/src/core/bloc/hq_picker_state.dart';
-import 'camera_preview_widget.dart';
-import 'hq_media_preview_dialog.dart';
 import 'package:hq_picker/src/telegram/telegram_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -17,7 +15,10 @@ import '../bloc/hq_picker_bloc.dart';
 import '../bloc/hq_picker_event.dart';
 import '../config/hq_picker_config.dart';
 import '../config/hq_picker_enums.dart';
+import '../tools/hq_picker_asset_visuals.dart';
 import '../tools/media_services.dart';
+import 'camera_preview_widget.dart';
+import 'hq_media_preview_dialog.dart';
 
 class HQPickerDefultBuilderWidget extends StatefulWidget {
   final HQPickerTelegramMediaPickers widget;
@@ -116,14 +117,14 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
               ),
               child: state.assetsList.isEmpty
                   ? (widget.widget.config.emptyWidget ??
-                      Center(
-                        child: state.status == HQPickerStatus.loading
-                            ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
-                            : Text(
-                                widget.widget.textEmptyList,
-                                style: widget.widget.config.theme.resolvedEmptyListTextStyle,
-                              ),
-                      ))
+                        Center(
+                          child: state.status == HQPickerStatus.loading
+                              ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
+                              : Text(
+                                  widget.widget.textEmptyList,
+                                  style: widget.widget.config.theme.resolvedEmptyListTextStyle,
+                                ),
+                        ))
                   : AnimatedPadding(
                       duration: const Duration(milliseconds: 250),
                       padding: EdgeInsets.only(top: topPadding, right: 10, left: 10),
@@ -181,7 +182,8 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                                 borderRadius: BorderRadius.circular(10),
                                 child: GridView.builder(
                                   controller: widget.controller,
-                                  physics: widget.widget.config.scrollPhysics ??
+                                  physics:
+                                      widget.widget.config.scrollPhysics ??
                                       const BouncingScrollPhysics(
                                         parent: AlwaysScrollableScrollPhysics(),
                                       ),
@@ -210,11 +212,14 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                                       }
                                     } else {
                                       AssetEntity assetEntity = state.assetsList[index - 1];
-                                      return assetWidget(
-                                        context,
-                                        assetEntity,
-                                        widget.widget.maxCountPickMedia,
-                                        state,
+                                      return KeyedSubtree(
+                                        key: ValueKey(assetEntity.id),
+                                        child: assetWidget(
+                                          context,
+                                          assetEntity,
+                                          widget.widget.maxCountPickMedia,
+                                          state,
+                                        ),
                                       );
                                     }
                                   },
@@ -243,8 +248,17 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                 bottom: MediaQuery.of(context).size.height * 0.10,
                 right: 30,
                 child: AnimatedScale(
-                  scale: widget.widget.config.sendButtonAnimation ? 1.0 : 1.0,
-                  duration: const Duration(milliseconds: 200),
+                  scale: 1.0,
+                  // Previously both branches of this condition were `1.0`,
+                  // so `sendButtonAnimation` had no observable effect at all.
+                  // Since this widget is only mounted while there's a
+                  // selection (conditionally built above), there's no prior
+                  // frame to scale-animate *from* — so what the flag can
+                  // meaningfully control is whether the built-in Flutter
+                  // insert transition gets any duration to run in.
+                  duration: widget.widget.config.sendButtonAnimation
+                      ? const Duration(milliseconds: 200)
+                      : Duration.zero,
                   curve: Curves.easeOutCubic,
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -298,7 +312,9 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
     HQPickerState state,
   ) {
     bool isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
-    int? selectionIndex = isSelected ? state.selectedAssetList.indexOf(assetEntity) + 1 : null;
+    int? selectionIndex = isSelected
+        ? (state.selectedAssetIndexById[assetEntity.id] ?? -1) + 1
+        : null;
     final config = widget.widget.config;
 
     void handleTap() {
@@ -356,19 +372,6 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
     }
 
     final borderRadius = config.gridItemBorderRadius ?? BorderRadius.zero;
-
-    Alignment resolveBadgeAlignment() {
-      switch (config.badgePosition) {
-        case HQPickerBadgePosition.topRight:
-          return Alignment.topRight;
-        case HQPickerBadgePosition.topLeft:
-          return Alignment.topLeft;
-        case HQPickerBadgePosition.bottomRight:
-          return Alignment.bottomRight;
-        case HQPickerBadgePosition.bottomLeft:
-          return Alignment.bottomLeft;
-      }
-    }
 
     return RepaintBoundary(
       child: GestureDetector(
@@ -439,12 +442,12 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                       ),
                     ),
                   ),
-                if (assetEntity.title?.toLowerCase().endsWith('.gif') == true ||
-                    assetEntity.mimeType?.contains('gif') == true)
+                if (HQPickerAssetVisuals.isGif(assetEntity))
                   Positioned(
                     bottom: 4,
                     left: 4,
-                    child: config.icons.gifBadge ??
+                    child:
+                        config.icons.gifBadge ??
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
@@ -461,36 +464,44 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                           ),
                         ),
                   ),
-                if (isSelected)
+                if (config.selectionStyle != HQPickerSelectionStyle.borderOnly)
                   Positioned.fill(
-                    child: AnimatedScale(
-                      scale: config.enableSelectionAnimation ? 1.0 : 1.0,
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOutCubic,
-                      child: Container(
-                        alignment: resolveBadgeAlignment(),
-                        padding: const EdgeInsets.all(5.0),
-                        decoration: BoxDecoration(
-                          color: config.selectionStyle == HQPickerSelectionStyle.borderOnly
-                              ? Colors.transparent
-                              : Colors.black38,
-                        ),
-                        child: config.selectionStyle == HQPickerSelectionStyle.borderOnly
-                            ? const SizedBox.shrink()
-                            : Container(
-                                decoration: BoxDecoration(
-                                  color: config.theme.badgeBackgroundColor,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(width: 1.5, color: Colors.white),
-                                ),
-                                padding: const EdgeInsets.all(6.0),
-                                child: config.selectionStyle == HQPickerSelectionStyle.checkMark
-                                    ? Icon(Icons.check, size: 14, color: config.theme.badgeTextColor)
-                                    : Text(
-                                        '$selectionIndex',
-                                        style: config.theme.resolvedBadgeTextStyle,
-                                      ),
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: isSelected ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeOutCubic,
+                        child: Container(
+                          alignment: HQPickerAssetVisuals.resolveBadgeAlignment(
+                            config.badgePosition,
+                          ),
+                          padding: const EdgeInsets.all(5.0),
+                          color: isSelected ? Colors.black38 : Colors.transparent,
+                          child: AnimatedScale(
+                            // The badge container is now always mounted (only
+                            // its opacity toggles), so — unlike before — this
+                            // actually has a previous frame to animate from.
+                            scale: config.enableSelectionAnimation
+                                ? (isSelected ? 1.0 : 0.85)
+                                : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            curve: Curves.easeOutCubic,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: config.theme.badgeBackgroundColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(width: 1.5, color: Colors.white),
                               ),
+                              padding: const EdgeInsets.all(6.0),
+                              child: config.selectionStyle == HQPickerSelectionStyle.checkMark
+                                  ? Icon(Icons.check, size: 14, color: config.theme.badgeTextColor)
+                                  : Text(
+                                      isSelected ? '$selectionIndex' : '',
+                                      style: config.theme.resolvedBadgeTextStyle,
+                                    ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -506,9 +517,5 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
     HQMediaPreviewDialog.show(context, asset, config);
   }
 
-  String _formatDuration(int seconds) {
-    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return '$mins:$secs';
-  }
+  String _formatDuration(int seconds) => HQPickerAssetVisuals.formatDuration(seconds);
 }

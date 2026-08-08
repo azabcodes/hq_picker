@@ -12,12 +12,13 @@ import 'hq_picker_theme.dart';
 enum HQPickerSortOrder { newestFirst, oldestFirst }
 
 /// Signature for a custom asset item tile builder.
-typedef HQAssetItemBuilder = Widget Function(
-  BuildContext context,
-  AssetEntity asset,
-  bool isSelected,
-  int? selectionIndex,
-);
+typedef HQAssetItemBuilder =
+    Widget Function(
+      BuildContext context,
+      AssetEntity asset,
+      bool isSelected,
+      int? selectionIndex,
+    );
 
 /// Signature for a custom snackbar/toast builder.
 typedef HQPickerSnackBarBuilder = void Function(BuildContext context, String message);
@@ -26,49 +27,55 @@ typedef HQPickerSnackBarBuilder = void Function(BuildContext context, String mes
 typedef HQAlbumFilter = bool Function(AssetPathEntity album);
 
 /// Signature for a custom picker header builder.
-typedef HQHeaderBuilder = Widget Function(
-  BuildContext context,
-  AssetPathEntity? currentAlbum,
-  List<AssetPathEntity> albums,
-  void Function(AssetPathEntity album) onSelectAlbum,
-);
+typedef HQHeaderBuilder =
+    Widget Function(
+      BuildContext context,
+      AssetPathEntity? currentAlbum,
+      List<AssetPathEntity> albums,
+      void Function(AssetPathEntity album) onSelectAlbum,
+    );
 
 /// Signature for a custom bottom send bar builder.
-typedef HQBottomSendBarBuilder = Widget Function(
-  BuildContext context,
-  List<AssetEntity> selectedAssets,
-  List<FileSystemEntity> selectedFiles,
-  VoidCallback onConfirm,
-);
+typedef HQBottomSendBarBuilder =
+    Widget Function(
+      BuildContext context,
+      List<AssetEntity> selectedAssets,
+      List<FileSystemEntity> selectedFiles,
+      VoidCallback onConfirm,
+    );
 
 /// Signature for a custom permission dialog builder.
-typedef HQPermissionDialogBuilder = Widget Function(
-  BuildContext context,
-  VoidCallback onRequestPermission,
-  VoidCallback onOpenSettings,
-);
+typedef HQPermissionDialogBuilder =
+    Widget Function(
+      BuildContext context,
+      VoidCallback onRequestPermission,
+      VoidCallback onOpenSettings,
+    );
 
 /// Signature for a custom asset preview dialog builder.
-typedef HQAssetPreviewBuilder = Widget Function(
-  BuildContext context,
-  AssetEntity asset,
-);
+typedef HQAssetPreviewBuilder =
+    Widget Function(
+      BuildContext context,
+      AssetEntity asset,
+    );
 
 /// Signature for a custom confirm button builder.
-typedef HQConfirmButtonBuilder = Widget Function(
-  BuildContext context,
-  List<AssetEntity> selectedAssets,
-  VoidCallback onConfirm,
-);
+typedef HQConfirmButtonBuilder =
+    Widget Function(
+      BuildContext context,
+      List<AssetEntity> selectedAssets,
+      VoidCallback onConfirm,
+    );
 
 /// Signature for a custom AppBar builder (e.g. for Instagram shape).
-typedef HQAppBarBuilder = PreferredSizeWidget Function(
-  BuildContext context,
-  AssetPathEntity? currentAlbum,
-  List<AssetEntity> selectedAssets,
-  VoidCallback onConfirm,
-  VoidCallback onBack,
-);
+typedef HQAppBarBuilder =
+    PreferredSizeWidget Function(
+      BuildContext context,
+      AssetPathEntity? currentAlbum,
+      List<AssetEntity> selectedAssets,
+      VoidCallback onConfirm,
+      VoidCallback onBack,
+    );
 
 class HQPickerConfig {
   final HQPickerTheme theme;
@@ -217,6 +224,106 @@ class HQPickerConfig {
     this.scrollPhysics,
   });
 
+  HQPickerConfig copyWith({
+    HQPickerTheme? theme,
+    HQPickerLocalizations? localizations,
+    HQPickerIcons? icons,
+    bool? compressImage,
+    int? compressQuality,
+    int? minFileSize,
+    int? maxFileSize,
+    Duration? minVideoDuration,
+    Duration? maxVideoDuration,
+    HQPickerSortOrder? sortOrder,
+    int? gridCrossAxisCount,
+    double? gridCrossAxisSpacing,
+    double? gridMainAxisSpacing,
+    double? gridChildAspectRatio,
+    BorderRadius? gridItemBorderRadius,
+    HQPickerSelectionStyle? selectionStyle,
+    HQPickerBadgePosition? badgePosition,
+    bool? enableSelectionAnimation,
+    bool? enableFullScreenPreview,
+    bool? autoPlayVideoPreview,
+    bool? muteVideoPreview,
+    HQPickerCameraLens? preferredCameraLens,
+    HQPickerCameraCaptureMode? cameraCaptureMode,
+    Widget Function(BuildContext context)? cameraOverlayBuilder,
+    HQPickerFileViewMode? fileViewMode,
+    bool? enableDocumentPreview,
+    Map<String, Widget>? customFileTypeIcons,
+    bool? enableDragSelect,
+    HQPickerGestureAction? doubleTapAction,
+    HQPickerGestureAction? longPressAction,
+    HQBottomSendBarBuilder? bottomSendBarBuilder,
+    bool? sendButtonAnimation,
+    HQPermissionDialogBuilder? permissionDialogBuilder,
+    HQAssetPreviewBuilder? previewDialogBuilder,
+    HQConfirmButtonBuilder? confirmButtonBuilder,
+    HQAppBarBuilder? appBarBuilder,
+    HQAlbumFilter? albumFilter,
+    HQHeaderBuilder? headerBuilder,
+    VoidCallback? onMaxCountReached,
+    void Function(AssetEntity asset)? onAssetTap,
+    void Function(AssetPathEntity album)? onAlbumChanged,
+    HQAssetItemBuilder? assetItemBuilder,
+    bool? showSnackBar,
+    HQPickerSnackBarBuilder? onSnackBar,
+    Widget? loadingWidget,
+    Widget? emptyWidget,
+    ScrollPhysics? scrollPhysics,
+  }) {
+    return HQPickerConfig(
+      theme: theme ?? this.theme,
+      localizations: localizations ?? this.localizations,
+      icons: icons ?? this.icons,
+      compressImage: compressImage ?? this.compressImage,
+      compressQuality: compressQuality ?? this.compressQuality,
+      minFileSize: minFileSize ?? this.minFileSize,
+      maxFileSize: maxFileSize ?? this.maxFileSize,
+      minVideoDuration: minVideoDuration ?? this.minVideoDuration,
+      maxVideoDuration: maxVideoDuration ?? this.maxVideoDuration,
+      sortOrder: sortOrder ?? this.sortOrder,
+      gridCrossAxisCount: gridCrossAxisCount ?? this.gridCrossAxisCount,
+      gridCrossAxisSpacing: gridCrossAxisSpacing ?? this.gridCrossAxisSpacing,
+      gridMainAxisSpacing: gridMainAxisSpacing ?? this.gridMainAxisSpacing,
+      gridChildAspectRatio: gridChildAspectRatio ?? this.gridChildAspectRatio,
+      gridItemBorderRadius: gridItemBorderRadius ?? this.gridItemBorderRadius,
+      selectionStyle: selectionStyle ?? this.selectionStyle,
+      badgePosition: badgePosition ?? this.badgePosition,
+      enableSelectionAnimation: enableSelectionAnimation ?? this.enableSelectionAnimation,
+      enableFullScreenPreview: enableFullScreenPreview ?? this.enableFullScreenPreview,
+      autoPlayVideoPreview: autoPlayVideoPreview ?? this.autoPlayVideoPreview,
+      muteVideoPreview: muteVideoPreview ?? this.muteVideoPreview,
+      preferredCameraLens: preferredCameraLens ?? this.preferredCameraLens,
+      cameraCaptureMode: cameraCaptureMode ?? this.cameraCaptureMode,
+      cameraOverlayBuilder: cameraOverlayBuilder ?? this.cameraOverlayBuilder,
+      fileViewMode: fileViewMode ?? this.fileViewMode,
+      enableDocumentPreview: enableDocumentPreview ?? this.enableDocumentPreview,
+      customFileTypeIcons: customFileTypeIcons ?? this.customFileTypeIcons,
+      enableDragSelect: enableDragSelect ?? this.enableDragSelect,
+      doubleTapAction: doubleTapAction ?? this.doubleTapAction,
+      longPressAction: longPressAction ?? this.longPressAction,
+      bottomSendBarBuilder: bottomSendBarBuilder ?? this.bottomSendBarBuilder,
+      sendButtonAnimation: sendButtonAnimation ?? this.sendButtonAnimation,
+      permissionDialogBuilder: permissionDialogBuilder ?? this.permissionDialogBuilder,
+      previewDialogBuilder: previewDialogBuilder ?? this.previewDialogBuilder,
+      confirmButtonBuilder: confirmButtonBuilder ?? this.confirmButtonBuilder,
+      appBarBuilder: appBarBuilder ?? this.appBarBuilder,
+      albumFilter: albumFilter ?? this.albumFilter,
+      headerBuilder: headerBuilder ?? this.headerBuilder,
+      onMaxCountReached: onMaxCountReached ?? this.onMaxCountReached,
+      onAssetTap: onAssetTap ?? this.onAssetTap,
+      onAlbumChanged: onAlbumChanged ?? this.onAlbumChanged,
+      assetItemBuilder: assetItemBuilder ?? this.assetItemBuilder,
+      showSnackBar: showSnackBar ?? this.showSnackBar,
+      onSnackBar: onSnackBar ?? this.onSnackBar,
+      loadingWidget: loadingWidget ?? this.loadingWidget,
+      emptyWidget: emptyWidget ?? this.emptyWidget,
+      scrollPhysics: scrollPhysics ?? this.scrollPhysics,
+    );
+  }
+
   /// Shows the notification (snack-bar or custom toast) to the user.
   /// Respects [showSnackBar] and [onSnackBar] settings.
   void showSelectionError(BuildContext context, String message) {
@@ -239,5 +346,3 @@ class HQPickerConfig {
     );
   }
 }
-
-
