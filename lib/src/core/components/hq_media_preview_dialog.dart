@@ -151,15 +151,18 @@ class _HQMediaPreviewDialogState extends State<HQMediaPreviewDialog> {
                         fit: BoxFit.contain,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
-                          return SizedBox(
-                            width: 60,
-                            height: 60,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                widget.config.theme.primaryColor,
-                              ),
-                            ),
+                          return Center(
+                            child: widget.config.loadingWidget ??
+                                SizedBox(
+                                  width: 60,
+                                  height: 60,
+                                  child: CircularProgressIndicator.adaptive(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      widget.config.theme.primaryColor,
+                                    ),
+                                  ),
+                                ),
                           );
                         },
                         errorBuilder: (context, error, stackTrace) => Column(

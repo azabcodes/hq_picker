@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_saver/flutter_saver.dart';
 import 'package:native_android_path/native_android_path.dart';
 import 'package:path/path.dart' as path;
@@ -64,39 +64,50 @@ class HQPickerMediaServices {
 
     // Show dialog
     if (context.mounted) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: config.theme.backgroundColor,
-          title: Text(
-            config.localizations.permissionRequired,
-            style: config.theme.resolvedDialogTitleTextStyle,
+      if (config.permissionDialogBuilder != null) {
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => config.permissionDialogBuilder!(
+            ctx,
+            () {},
+            () => openAppSettings(),
           ),
-          content: Text(
-            config.localizations.permissionDenied,
-            style: config.theme.resolvedDialogContentTextStyle,
+        );
+      } else {
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(
+              config.localizations.permissionRequired,
+              style: config.theme.resolvedDialogTitleTextStyle,
+            ),
+            content: Text(
+              config.localizations.permissionDenied,
+              style: config.theme.resolvedDialogContentTextStyle,
+            ),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  config.localizations.cancel,
+                  style: config.theme.resolvedDialogCancelTextStyle,
+                ),
+              ),
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.pop(ctx);
+                },
+                child: Text(
+                  config.localizations.openSettings,
+                  style: config.theme.resolvedDialogConfirmTextStyle,
+                ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                config.localizations.cancel,
-                style: config.theme.resolvedDialogCancelTextStyle,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                openAppSettings();
-                Navigator.pop(ctx);
-              },
-              child: Text(
-                config.localizations.openSettings,
-                style: config.theme.resolvedDialogConfirmTextStyle,
-              ),
-            ),
-          ],
-        ),
-      );
+        );
+      }
     }
     return false;
   }

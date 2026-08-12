@@ -106,6 +106,10 @@ class _PickerHomePageState extends State<PickerHomePage>
   bool _useCustomPreviewDialog = false;
   bool _useCustomConfirmButton = false;
   bool _useCustomAppBar = false;
+  bool _useArabicLocalizations = false;
+  bool _useCustomLoadingWidget = false;
+  BoxFit _previewFit = BoxFit.cover;
+  BoxFit _gridItemFit = BoxFit.cover;
 
   @override
   void initState() {
@@ -445,6 +449,81 @@ class _PickerHomePageState extends State<PickerHomePage>
                       },
                     ),
 
+                    const SizedBox(height: 12),
+
+                    // Localizations & New Features
+                    const Text(
+                      'Localizations & Custom Loaders',
+                      style: TextStyle(
+                        color: Colors.deepPurpleAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      title: const Text('Arabic Localization (HQPickerLocalizations.ar)', style: TextStyle(color: Colors.white)),
+                      value: _useArabicLocalizations,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _useArabicLocalizations = v);
+                        setState(() {});
+                      },
+                    ),
+                    SwitchListTile(
+                      title: const Text('Custom Loading Widget', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Replaces all CircularProgressIndicators', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      value: _useCustomLoadingWidget,
+                      activeTrackColor: Colors.deepPurpleAccent,
+                      onChanged: (v) {
+                        setModalState(() => _useCustomLoadingWidget = v);
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Preview BoxFit
+                    const Text('Preview BoxFit', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: [BoxFit.cover, BoxFit.contain, BoxFit.fill].map((fit) {
+                        final isSel = _previewFit == fit;
+                        return ChoiceChip(
+                          label: Text(fit.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _previewFit = fit);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Grid Item BoxFit
+                    const Text('Grid Item BoxFit', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      children: [BoxFit.cover, BoxFit.contain, BoxFit.fill].map((fit) {
+                        final isSel = _gridItemFit == fit;
+                        return ChoiceChip(
+                          label: Text(fit.name),
+                          selected: isSel,
+                          selectedColor: Colors.deepPurple,
+                          onSelected: (sel) {
+                            if (sel) {
+                              setModalState(() => _gridItemFit = fit);
+                              setState(() {});
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -492,6 +571,13 @@ class _PickerHomePageState extends State<PickerHomePage>
         requestType: requestType,
         allowedExtensions: allowedExtensions,
         config: HQPickerConfig(
+          loadingWidget: _useCustomLoadingWidget
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.deepPurpleAccent),
+                )
+              : null,
+          previewFit: _previewFit,
+          gridItemFit: _gridItemFit,
           compressImage: false,
           // ── Grid & Item Customization ─────────────────────
           gridCrossAxisCount: _gridCrossAxisCount,
@@ -661,21 +747,23 @@ class _PickerHomePageState extends State<PickerHomePage>
                 }
               : null,
           // ── Theming example ──────────────────────────────
-          theme: HQPickerTheme(
-            backgroundColor: const Color(0xFF1E1E2E),
-            appbarColor: const Color(0xFF1E1E2E),
-            backgroundDropDownColor: const Color(0xFF2A2D3E),
+          theme: const HQPickerTheme(
+            backgroundColor: Color(0xFF1E1E2E),
+            appbarColor: Color(0xFF1E1E2E),
+            backgroundDropDownColor: Color(0xFF2A2D3E),
             confirmButtonColor: Colors.deepPurple,
             badgeBackgroundColor: Colors.deepPurple,
           ),
           // ── Localization example ──────────────────────────
-          localizations: const HQPickerLocalizations(
-            confirm: 'Done',
-            emptyList: 'No media found',
-            gallery: 'Gallery',
-            permissionRequired: 'Access Required',
-            permissionDenied: 'Please allow media access in Settings.',
-          ),
+          localizations: _useArabicLocalizations
+              ? const HQPickerLocalizations.ar()
+              : const HQPickerLocalizations(
+                  confirm: 'Done',
+                  emptyList: 'No media found',
+                  gallery: 'Gallery',
+                  permissionRequired: 'Access Required',
+                  permissionDenied: 'Please allow media access in Settings.',
+                ),
           // ── Scroll physics, sort order & custom icons ──
           sortOrder: HQPickerSortOrder.newestFirst,
           scrollPhysics: const BouncingScrollPhysics(

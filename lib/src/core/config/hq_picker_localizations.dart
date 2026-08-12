@@ -18,6 +18,8 @@ class HQPickerLocalizations {
   final String recent;
   final String all;
   final String maxSelectTitle;
+  final String assetDetails;
+  final String close;
 
   const HQPickerLocalizations({
     this.confirm = 'Send',
@@ -38,6 +40,8 @@ class HQPickerLocalizations {
     this.recent = 'Recent',
     this.all = 'All',
     this.maxSelectTitle = 'Maximum selection limit is',
+    this.assetDetails = 'Asset Details',
+    this.close = 'Close',
   });
 
   const HQPickerLocalizations.en() : this();
@@ -62,6 +66,8 @@ class HQPickerLocalizations {
         recent: 'الأحدث',
         all: 'الكل',
         maxSelectTitle: 'الحد الأقصى للاختيار هو',
+        assetDetails: 'تفاصيل العنصر',
+        close: 'إغلاق',
       );
 
   HQPickerLocalizations copyWith({
@@ -83,6 +89,8 @@ class HQPickerLocalizations {
     String? recent,
     String? all,
     String? maxSelectTitle,
+    String? assetDetails,
+    String? close,
   }) {
     return HQPickerLocalizations(
       confirm: confirm ?? this.confirm,
@@ -103,6 +111,8 @@ class HQPickerLocalizations {
       recent: recent ?? this.recent,
       all: all ?? this.all,
       maxSelectTitle: maxSelectTitle ?? this.maxSelectTitle,
+      assetDetails: assetDetails ?? this.assetDetails,
+      close: close ?? this.close,
     );
   }
 }

@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -34,7 +35,7 @@ class HQInstagramPicker extends StatefulWidget {
   final String textEmptyList;
   final Color? textEmptyListColor;
 
-  const HQInstagramPicker({
+  HQInstagramPicker({
     super.key,
     required this.maxCount,
     required this.requestType,
@@ -42,9 +43,9 @@ class HQInstagramPicker extends StatefulWidget {
     this.loading,
     this.title,
     this.cameraImageSettings,
-    this.textEmptyList = 'No albums found.',
+    String? textEmptyList,
     this.textEmptyListColor,
-  });
+  }) : textEmptyList = textEmptyList ?? config.localizations.emptyList;
 
   @override
   State<HQInstagramPicker> createState() => _HQInstagramPickerState();
@@ -52,10 +53,12 @@ class HQInstagramPicker extends StatefulWidget {
 
 class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKeepAliveClientMixin {
   late final HQPickerBloc _bloc;
+  late BoxFit _previewFit;
 
   @override
   void initState() {
     super.initState();
+    _previewFit = widget.config.previewFit;
     _bloc = HQPickerBloc()
       ..add(
         LoadAlbumsEvent(
@@ -69,6 +72,9 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
 
   @override
   void didUpdateWidget(covariant HQInstagramPicker oldWidget) {
+    if (oldWidget.config.previewFit != widget.config.previewFit) {
+      _previewFit = widget.config.previewFit;
+    }
     if (oldWidget.requestType != widget.requestType) {
       _bloc.add(
         LoadAlbumsEvent(
@@ -173,17 +179,29 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
     return AppBar(
       backgroundColor: widget.config.theme.appbarColor,
       elevation: 0,
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(color: Colors.transparent),
+        ),
+      ),
       leading: IconButton(
         icon: IconTheme(
           data: IconThemeData(color: widget.config.theme.textColor),
           child: widget.config.icons.back,
         ),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          Navigator.pop(context);
+        },
       ),
       title:
           widget.title ??
           GestureDetector(
-            onTap: () => _showAlbumSelector(context, state),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _showAlbumSelector(context, state);
+            },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -199,10 +217,9 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: widget.config.theme.textColor,
-                  size: 22,
+                IconTheme(
+                  data: IconThemeData(color: widget.config.theme.textColor),
+                  child: widget.config.icons.dropdown,
                 ),
               ],
             ),
@@ -217,11 +234,20 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                     selectedAssets,
                     handleConfirm,
                   )
-                : InkResponse(
-                    onTap: handleConfirm,
-                    child: Text(
-                      widget.config.localizations.confirm,
-                      style: widget.config.theme.resolvedConfirmButtonTextStyle,
+                : InkWell(
+                    borderRadius: BorderRadius.circular(16.0),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      handleConfirm();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                      child: Text(
+                        widget.config.localizations.confirm,
+                        style: widget.config.theme.resolvedConfirmButtonTextStyle.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
           ),
@@ -246,7 +272,6 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
             previous.albumList != current.albumList ||
             previous.selectedAlbum != current.selectedAlbum ||
             previous.assetsList != current.assetsList ||
-            previous.selectedAssetList != current.selectedAssetList ||
             previous.selectedEntity != current.selectedEntity ||
             previous.isLoadingMore != current.isLoadingMore ||
             previous.hasMore != current.hasMore ||
@@ -263,16 +288,49 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                 SizedBox(
                   height: size.height * 0.40,
                   child: state.capturedImage != null
-                      ? InteractiveViewer(
-                          minScale: 1.0,
-                          maxScale: 4.0,
-                          clipBehavior: Clip.hardEdge,
-                          child: Image.file(
-                            fit: BoxFit.cover,
-                            height: size.height,
-                            width: size.width,
-                            state.capturedImage!,
-                          ),
+                      ? Stack(
+                          children: [
+                            Positioned.fill(
+                              child: InteractiveViewer(
+                                minScale: 1.0,
+                                maxScale: 4.0,
+                                clipBehavior: Clip.hardEdge,
+                                child: Image.file(
+                                  fit: _previewFit,
+                                  height: size.height,
+                                  width: size.width,
+                                  state.capturedImage!,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _previewFit = _previewFit == BoxFit.cover
+                                        ? BoxFit.contain
+                                        : BoxFit.cover;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _previewFit == BoxFit.cover
+                                        ? Icons.aspect_ratio_rounded
+                                        : Icons.crop_free_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         )
                       : (state.selectedEntity == null)
                       ? const SizedBox.shrink()
@@ -287,7 +345,7 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                   state.selectedEntity!,
                                   isOriginal: false,
                                   thumbnailSize: const ThumbnailSize.square(500),
-                                  fit: BoxFit.cover,
+                                  fit: _previewFit,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Center(
                                       child: IconTheme(
@@ -296,6 +354,33 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                       ),
                                     );
                                   },
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _previewFit = _previewFit == BoxFit.cover
+                                        ? BoxFit.contain
+                                        : BoxFit.cover;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _previewFit == BoxFit.cover
+                                        ? Icons.aspect_ratio_rounded
+                                        : Icons.crop_free_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -403,6 +488,7 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                   Center(
                                     child: state.status == HQPickerStatus.loading
                                         ? widget.loading ??
+                                              widget.config.loadingWidget ??
                                               const CircularProgressIndicator.adaptive()
                                         : Text(
                                             widget.textEmptyList,
@@ -417,39 +503,47 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                   }
                                   return false;
                                 },
-                                child: GridView.builder(
+                                child: CustomScrollView(
                                   physics:
                                       widget.config.scrollPhysics ??
                                       const BouncingScrollPhysics(
                                         parent: AlwaysScrollableScrollPhysics(),
                                       ),
                                   scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
-                                  addRepaintBoundaries: true,
-                                  addAutomaticKeepAlives: true,
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: widget.config.gridCrossAxisCount ?? 4,
-                                    mainAxisSpacing: widget.config.gridMainAxisSpacing,
-                                    crossAxisSpacing: widget.config.gridCrossAxisSpacing,
-                                    childAspectRatio: widget.config.gridChildAspectRatio,
-                                  ),
-                                  itemCount:
-                                      state.assetsList.length + (state.isLoadingMore ? 1 : 0),
-                                  itemBuilder: (context, index) {
-                                    if (index < state.assetsList.length) {
-                                      final asset = state.assetsList[index];
-                                      return HQAssetItem(
-                                        key: ValueKey(asset.id),
-                                        assetEntity: asset,
-                                        state: state,
-                                        maxCount: widget.maxCount,
-                                        config: widget.config,
-                                      );
-                                    } else {
-                                      return const Center(
-                                        child: CircularProgressIndicator.adaptive(),
-                                      );
-                                    }
-                                  },
+                                  slivers: [
+                                    SliverGrid(
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: widget.config.gridCrossAxisCount ?? 4,
+                                        mainAxisSpacing: widget.config.gridMainAxisSpacing,
+                                        crossAxisSpacing: widget.config.gridCrossAxisSpacing,
+                                        childAspectRatio: widget.config.gridChildAspectRatio,
+                                      ),
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, index) {
+                                          if (index < state.assetsList.length) {
+                                            final asset = state.assetsList[index];
+                                            return HQAssetItem(
+                                              key: ValueKey(asset.id),
+                                              assetEntity: asset,
+                                              state: state,
+                                              maxCount: widget.maxCount,
+                                              config: widget.config,
+                                            );
+                                          } else {
+                                            return Center(
+                                              child: widget.loading ??
+                                                  widget.config.loadingWidget ??
+                                                  const CircularProgressIndicator.adaptive(),
+                                            );
+                                          }
+                                        },
+                                        childCount: state.assetsList.length +
+                                            (state.isLoadingMore ? 1 : 0),
+                                        addRepaintBoundaries: true,
+                                        addAutomaticKeepAlives: true,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                       ),
@@ -470,29 +564,81 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
         : state.albumList;
 
     showModalBottomSheet(
-      backgroundColor: widget.config.theme.backgroundDropDownColor,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black45,
       context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
       builder: (_) {
-        return ListView.builder(
-          physics: const BouncingScrollPhysics(),
-          itemCount: filteredAlbums.length,
-          itemBuilder: (context, index) {
-            final album = filteredAlbums[index];
-            return ListTile(
-              onTap: () {
-                widget.config.onAlbumChanged?.call(album);
-                _bloc.add(ChangeAlbumEvent(album));
-                Navigator.pop(context);
-              },
-              title: Text(
-                album.name == 'Recent' ? widget.config.localizations.gallery : album.name,
-                style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(
-                  fontSize: 18.0,
-                ),
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              color: widget.config.theme.backgroundDropDownColor.withValues(alpha: 0.85),
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                itemCount: filteredAlbums.length,
+                itemBuilder: (context, index) {
+                  final album = filteredAlbums[index];
+                  final int origIndex = state.albumList.indexOf(album);
+                  final Uint8List? thumb = (origIndex >= 0 && origIndex < state.albumFirstImages.length)
+                      ? state.albumFirstImages[origIndex]
+                      : null;
+                  final int? count = (origIndex >= 0 && origIndex < state.albumFileCounts.length)
+                      ? state.albumFileCounts[origIndex]
+                      : null;
+
+                  return RepaintBoundary(
+                    child: ListTile(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        widget.config.onAlbumChanged?.call(album);
+                        _bloc.add(ChangeAlbumEvent(album));
+                        Navigator.pop(context);
+                      },
+                      leading: thumb != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Image.memory(
+                                thumb,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: IconTheme(
+                                data: IconThemeData(color: widget.config.theme.textColor),
+                                child: const Icon(Icons.photo_library_rounded, size: 22),
+                              ),
+                            ),
+                      title: Text(
+                        album.name == 'Recent' ? widget.config.localizations.gallery : album.name,
+                        style: widget.config.theme.resolvedAlbumNameTextStyle.copyWith(
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      trailing: count != null
+                          ? Text(
+                              '$count',
+                              style: widget.config.theme.resolvedAlbumCountTextStyle,
+                            )
+                          : null,
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// Configurable icons for all UI elements across HQPicker.
 class HQPickerIcons {
@@ -20,18 +20,18 @@ class HQPickerIcons {
   final Widget? gifBadge;
 
   const HQPickerIcons({
-    this.camera = const Icon(Icons.camera_alt),
-    this.cameraVideo = const Icon(Icons.videocam),
-    this.send = const Icon(Icons.send),
-    this.check = const Icon(Icons.check),
-    this.play = const Icon(Icons.play_arrow),
-    this.fileTab = const Icon(Icons.insert_drive_file),
-    this.videoTab = const Icon(Icons.videocam),
-    this.audioTab = const Icon(Icons.audiotrack),
-    this.dropdown = const Icon(Icons.keyboard_arrow_down_sharp),
-    this.clear = const Icon(Icons.close),
-    this.error = const Icon(Icons.error),
-    this.back = const Icon(Icons.arrow_back_ios_new),
+    this.camera = const Icon(CupertinoIcons.camera_fill),
+    this.cameraVideo = const Icon(CupertinoIcons.videocam_fill),
+    this.send = const Icon(CupertinoIcons.arrow_up_circle_fill),
+    this.check = const Icon(CupertinoIcons.checkmark_alt),
+    this.play = const Icon(CupertinoIcons.play_fill),
+    this.fileTab = const Icon(CupertinoIcons.doc_fill),
+    this.videoTab = const Icon(CupertinoIcons.videocam_fill),
+    this.audioTab = const Icon(CupertinoIcons.music_note),
+    this.dropdown = const Icon(CupertinoIcons.chevron_down),
+    this.clear = const Icon(CupertinoIcons.xmark_circle_fill),
+    this.error = const Icon(CupertinoIcons.exclamationmark_triangle_fill),
+    this.back = const Icon(CupertinoIcons.chevron_back),
     this.gifBadge,
   });
 

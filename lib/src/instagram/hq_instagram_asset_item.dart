@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,81 +33,93 @@ class HQAssetItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bloc = context.read<HQPickerBloc>();
-    final isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
-    final selectionIndex = isSelected
-        ? (state.selectedAssetIndexById[assetEntity.id] ?? -1) + 1
-        : null;
-
-    void handleTap() {
-      HapticFeedback.selectionClick();
-      if (config.onAssetTap != null) {
-        config.onAssetTap!(assetEntity);
-      }
-
-      if (!isSelected && maxCount > 1 && state.selectedAssetList.length >= maxCount) {
-        config.onMaxCountReached?.call();
-        config.showSelectionError(
-          context,
-          '${config.localizations.maxSelectTitle} $maxCount',
+    return BlocSelector<HQPickerBloc, HQPickerState, _HQAssetItemSelectionState>(
+      selector: (state) {
+        final isSelected = state.selectedAssetIdsSet.contains(assetEntity.id);
+        final selectionIndex = isSelected
+            ? (state.selectedAssetIndexById[assetEntity.id] ?? -1) + 1
+            : null;
+        return _HQAssetItemSelectionState(
+          isSelected: isSelected,
+          selectionIndex: selectionIndex,
+          selectedCount: state.selectedAssetList.length,
         );
-        return;
-      }
+      },
+      builder: (context, selectionState) {
+        final isSelected = selectionState.isSelected;
+        final selectionIndex = selectionState.selectionIndex;
+        final selectedCount = selectionState.selectedCount;
+        final bloc = context.read<HQPickerBloc>();
 
-      if (assetEntity.type == AssetType.video) {
-        if (config.minVideoDuration != null &&
-            assetEntity.duration < config.minVideoDuration!.inSeconds) {
-          config.showSelectionError(
-            context,
-            'Video duration is shorter than minimum allowed (${config.minVideoDuration!.inSeconds}s)',
-          );
-          return;
+        void handleTap() {
+          HapticFeedback.selectionClick();
+          if (config.onAssetTap != null) {
+            config.onAssetTap!(assetEntity);
+          }
+
+          if (!isSelected && maxCount > 1 && selectedCount >= maxCount) {
+            config.onMaxCountReached?.call();
+            config.showSelectionError(
+              context,
+              '${config.localizations.maxSelectTitle} $maxCount',
+            );
+            return;
+          }
+
+          if (assetEntity.type == AssetType.video) {
+            if (config.minVideoDuration != null &&
+                assetEntity.duration < config.minVideoDuration!.inSeconds) {
+              config.showSelectionError(
+                context,
+                'Video duration is shorter than minimum allowed (${config.minVideoDuration!.inSeconds}s)',
+              );
+              return;
+            }
+            if (config.maxVideoDuration != null &&
+                assetEntity.duration > config.maxVideoDuration!.inSeconds) {
+              config.showSelectionError(
+                context,
+                'Video duration exceeds maximum allowed (${config.maxVideoDuration!.inSeconds}s)',
+              );
+              return;
+            }
+          }
+
+          bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
         }
-        if (config.maxVideoDuration != null &&
-            assetEntity.duration > config.maxVideoDuration!.inSeconds) {
-          config.showSelectionError(
-            context,
-            'Video duration exceeds maximum allowed (${config.maxVideoDuration!.inSeconds}s)',
-          );
-          return;
+
+        void executeAction(HQPickerGestureAction action) {
+          switch (action) {
+            case HQPickerGestureAction.none:
+              break;
+            case HQPickerGestureAction.select:
+              handleTap();
+              break;
+            case HQPickerGestureAction.preview:
+              _showFullScreenPreview(context, assetEntity);
+              break;
+            case HQPickerGestureAction.showInfo:
+              _showAssetInfoDialog(context, assetEntity);
+              break;
+          }
         }
-      }
 
-      bloc.add(ToggleAssetSelectionEvent(assetEntity, maxCount));
-    }
+        if (config.assetItemBuilder != null) {
+          return GestureDetector(
+            onTap: handleTap,
+            onDoubleTap: () => executeAction(config.doubleTapAction),
+            onLongPress: () => executeAction(config.longPressAction),
+            child: config.assetItemBuilder!(context, assetEntity, isSelected, selectionIndex),
+          );
+        }
 
-    void executeAction(HQPickerGestureAction action) {
-      switch (action) {
-        case HQPickerGestureAction.none:
-          break;
-        case HQPickerGestureAction.select:
-          handleTap();
-          break;
-        case HQPickerGestureAction.preview:
-          _showFullScreenPreview(context, assetEntity);
-          break;
-        case HQPickerGestureAction.showInfo:
-          _showAssetInfoDialog(context, assetEntity);
-          break;
-      }
-    }
+        final borderRadius = config.gridItemBorderRadius ?? BorderRadius.zero;
 
-    if (config.assetItemBuilder != null) {
-      return GestureDetector(
-        onTap: handleTap,
-        onDoubleTap: () => executeAction(config.doubleTapAction),
-        onLongPress: () => executeAction(config.longPressAction),
-        child: config.assetItemBuilder!(context, assetEntity, isSelected, selectionIndex),
-      );
-    }
-
-    final borderRadius = config.gridItemBorderRadius ?? BorderRadius.zero;
-
-    return RepaintBoundary(
-      child: GestureDetector(
-        onTap: handleTap,
-        onDoubleTap: () => executeAction(config.doubleTapAction),
-        onLongPress: () => executeAction(config.longPressAction),
+        return RepaintBoundary(
+          child: GestureDetector(
+            onTap: handleTap,
+            onDoubleTap: () => executeAction(config.doubleTapAction),
+            onLongPress: () => executeAction(config.longPressAction),
         child: ClipRRect(
           borderRadius: borderRadius,
           child: AnimatedContainer(
@@ -124,9 +137,9 @@ class HQAssetItem extends StatelessWidget {
                   child: AssetEntityImage(
                     assetEntity,
                     isOriginal: false,
-                    thumbnailSize: const ThumbnailSize.square(250),
+                    thumbnailSize: ThumbnailSize.square(config.thumbnailSize),
                     thumbnailFormat: ThumbnailFormat.jpeg,
-                    fit: BoxFit.cover,
+                    fit: config.gridItemFit,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
@@ -249,6 +262,8 @@ class HQAssetItem extends StatelessWidget {
         ),
       ),
     );
+  },
+);
   }
 
   static String _formatDuration(int seconds) => HQPickerAssetVisuals.formatDuration(seconds);
@@ -258,16 +273,16 @@ class HQAssetItem extends StatelessWidget {
   }
 
   void _showAssetInfoDialog(BuildContext context, AssetEntity asset) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: config.theme.backgroundColor,
-          title: Text('Asset Details', style: config.theme.resolvedDialogTitleTextStyle),
+        return CupertinoAlertDialog(
+          title: Text(config.localizations.assetDetails, style: config.theme.resolvedDialogTitleTextStyle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 8),
               Text('ID: ${asset.id}', style: config.theme.resolvedDialogContentTextStyle),
               const SizedBox(height: 6),
               Text(
@@ -294,13 +309,39 @@ class HQAssetItem extends StatelessWidget {
             ],
           ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
+              isDefaultAction: true,
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Close', style: config.theme.resolvedDialogConfirmTextStyle),
+              child: Text(config.localizations.close, style: config.theme.resolvedDialogConfirmTextStyle),
             ),
           ],
         );
       },
     );
   }
+}
+
+class _HQAssetItemSelectionState {
+  final bool isSelected;
+  final int? selectionIndex;
+  final int selectedCount;
+
+  const _HQAssetItemSelectionState({
+    required this.isSelected,
+    this.selectionIndex,
+    required this.selectedCount,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _HQAssetItemSelectionState &&
+          runtimeType == other.runtimeType &&
+          isSelected == other.isSelected &&
+          selectionIndex == other.selectionIndex &&
+          selectedCount == other.selectedCount;
+
+  @override
+  int get hashCode =>
+      isSelected.hashCode ^ selectionIndex.hashCode ^ selectedCount.hashCode;
 }

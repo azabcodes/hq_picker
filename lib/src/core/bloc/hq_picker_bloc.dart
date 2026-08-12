@@ -141,14 +141,27 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
         return;
       }
 
-      List<int> fileCounts = [];
-      List<Uint8List?> firstImages = [];
+      final selectedAlbum = albums.first;
+      final initialAssets = await HQPickerMediaServices.loadAssetsPaged(
+        selectedAlbum,
+        0,
+        state.pageSize,
+      );
 
+      // Emit initial success state immediately so grid items display without delay
+      emit(
+        state.copyWith(
+          status: HQPickerStatus.success,
+          albumList: albums,
+          selectedAlbum: selectedAlbum,
+          assetsList: initialAssets,
+          selectedEntity: () => initialAssets.isNotEmpty ? initialAssets.first : null,
+          hasMore: initialAssets.length == state.pageSize,
+        ),
+      );
+
+      // Fetch album cover thumbnails & counts in background for the album dropdown
       if (event.fetchFileCounts) {
-        // Fetch each album's count + cover thumbnail concurrently instead of
-        // sequentially. With N albums the old code paid ~2×N round trips
-        // back-to-back; Future.wait lets the platform channel handle them
-        // together while preserving album order in the results.
         final perAlbumResults = await Future.wait(
           albums.map((album) async {
             final count = await album.assetCountAsync;
@@ -162,22 +175,13 @@ class HQPickerBloc extends Bloc<HQPickerEvent, HQPickerState> {
             return (count, firstImageBytes);
           }),
         );
-        fileCounts = [for (final r in perAlbumResults) r.$1];
-        firstImages = [for (final r in perAlbumResults) r.$2];
+        emit(
+          state.copyWith(
+            albumFileCounts: [for (final r in perAlbumResults) r.$1],
+            albumFirstImages: [for (final r in perAlbumResults) r.$2],
+          ),
+        );
       }
-
-      final selectedAlbum = albums.first;
-
-      emit(
-        state.copyWith(
-          albumList: albums,
-          selectedAlbum: selectedAlbum,
-          albumFileCounts: fileCounts,
-          albumFirstImages: firstImages,
-        ),
-      );
-
-      add(ChangeAlbumEvent(selectedAlbum));
     } catch (e) {
       emit(
         state.copyWith(

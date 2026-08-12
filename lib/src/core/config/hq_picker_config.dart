@@ -174,6 +174,15 @@ class HQPickerConfig {
   /// Optional custom scroll physics for asset grids.
   final ScrollPhysics? scrollPhysics;
 
+  /// BoxFit applied to top preview image in Instagram picker shape.
+  final BoxFit previewFit;
+
+  /// BoxFit applied to thumbnails in asset grid tiles.
+  final BoxFit gridItemFit;
+
+  /// Size of square thumbnail generated for grid items.
+  final int thumbnailSize;
+
   const HQPickerConfig({
     this.theme = const HQPickerTheme(),
     this.localizations = const HQPickerLocalizations(),
@@ -221,7 +230,12 @@ class HQPickerConfig {
     this.onSnackBar,
     this.loadingWidget,
     this.emptyWidget,
-    this.scrollPhysics,
+    this.scrollPhysics = const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    ),
+    this.previewFit = BoxFit.cover,
+    this.gridItemFit = BoxFit.cover,
+    this.thumbnailSize = 200,
   });
 
   HQPickerConfig copyWith({
@@ -272,6 +286,9 @@ class HQPickerConfig {
     Widget? loadingWidget,
     Widget? emptyWidget,
     ScrollPhysics? scrollPhysics,
+    BoxFit? previewFit,
+    BoxFit? gridItemFit,
+    int? thumbnailSize,
   }) {
     return HQPickerConfig(
       theme: theme ?? this.theme,
@@ -321,6 +338,9 @@ class HQPickerConfig {
       loadingWidget: loadingWidget ?? this.loadingWidget,
       emptyWidget: emptyWidget ?? this.emptyWidget,
       scrollPhysics: scrollPhysics ?? this.scrollPhysics,
+      previewFit: previewFit ?? this.previewFit,
+      gridItemFit: gridItemFit ?? this.gridItemFit,
+      thumbnailSize: thumbnailSize ?? this.thumbnailSize,
     );
   }
 

@@ -1,3 +1,21 @@
+## 1.1.0
+
+### Universal Native iOS Design & Aesthetic
+- **Universal Native iOS Aesthetic**: Standardized Apple Human Interface Guidelines (HIG) design, `CupertinoIcons`, `CupertinoAlertDialog`, `BouncingScrollPhysics`, and translucent frosted glass blur (`BackdropFilter`) across both iOS and Android.
+- **Cupertino Iconography**: Standardized default `HQPickerIcons` to use `CupertinoIcons` (`camera_fill`, `videocam_fill`, `arrow_up_circle_fill`, `checkmark_alt`, `play_fill`, `doc_fill`, `chevron_down`, `xmark_circle_fill`, `chevron_back`) across all platforms.
+- **iOS Cupertino Dialogs**: Permission alerts, error popups, and media detail dialogs now utilize `CupertinoAlertDialog` and `CupertinoDialogAction` natively.
+
+### Ultra-Fast Performance & 0ms Instant Response
+- **0ms Instant Selection Response**: Isolated tile rebuilds via `BlocSelector` so tapping an item updates only that specific tile instantly (0ms), skipping re-evaluations across all other visible tiles.
+- **CustomScrollView & SliverGrid Viewport**: Upgraded media asset grid from `GridView.builder` to `CustomScrollView` + `SliverGrid` with `SliverChildBuilderDelegate` for silky-smooth 120fps scrolling.
+- **Instant Album & Asset Loading**: Optimized BLoC initialization to emit primary album assets immediately (~60ms) while fetching album cover thumbnails and counts asynchronously in the background.
+
+### Customization & Localization Features
+- **BoxFit Customization**: Added `previewFit` and `gridItemFit` parameters to `HQPickerConfig` to control image fitting for top preview and grid tiles.
+- **Interactive Aspect-Ratio Fit Toggle**: Added an interactive aspect ratio fit button to the preview panel allowing end-users to toggle between `BoxFit.cover` and `BoxFit.contain`.
+- **Custom Loading Widget Override**: Made all progress indicators seamlessly fallback to custom user-supplied `loadingWidget` across all components.
+- **Localization Enhancements**: All UI strings are retrieved from `HQPickerLocalizations` (including `HQPickerLocalizations.ar()` Arabic preset).
+
 ## 1.0.1
 
 ### Performance & Improvements

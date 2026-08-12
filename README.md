@@ -22,18 +22,19 @@ A high-performance, fully customizable, multi-mode media picker for Flutter — 
 
 ## Features
 
+- **Universal Native iOS Aesthetic**: Standardized Apple Human Interface Guidelines (HIG) aesthetic, `CupertinoIcons`, `CupertinoAlertDialog`, `BouncingScrollPhysics`, and frosted glass blur (`BackdropFilter`) across both iOS and Android.
+- **0ms Instant Touch Selection**: Isolated per-tile rebuilds via `BlocSelector` for 0ms immediate touch selection response.
+- **CustomScrollView & SliverGrid Viewport**: Powered by `CustomScrollView` + `SliverGrid` with `SliverChildBuilderDelegate` for 120fps stutter-free thumbnail scrolling.
 - BLoC Architecture — Zero `setState` inside the picker core. Optimized for fast rebuilds and scalability.
 - Isolate-Powered Performance — Heavy file resolving, compression, and file system scanning execute in background isolates using `IsolateServices` to eliminate UI thread freezes when selecting large videos (1GB+) or photos.
-- Ultra-Smooth 60/120fps Scrolling — Optimized state rebuild filtering (`buildWhen`) and pre-rendering cache (`scrollCacheExtent: 1500.0`) for stutter-free thumbnail scrolling.
-- Instant Selection Response — Single state emission per tap combined with O(1) set lookup (`selectedAssetIdsSet`) for 0ms selection delay.
 - Telegram Drag-to-Close Sheet — Draggable bottom sheet with snap points (`0.55`, `1.0`) and smooth swipe-down-to-close behavior.
-- Interactive Zoom Preview — Pinch-to-zoom (1.0x to 4.0x) on the top preview image in the Instagram picker.
-- Deep Customization System — Complete control over grid columns (`gridCrossAxisCount`), cell spacing, border radius (`gridItemBorderRadius`), badge styles (`number`, `checkMark`, `borderOnly`), and positions.
+- Interactive Zoom & BoxFit Preview — Pinch-to-zoom (1.0x to 4.0x) plus interactive aspect ratio fit toggle on the top preview panel.
+- Deep Customization System — Complete control over grid columns (`gridCrossAxisCount`), cell spacing, border radius (`gridItemBorderRadius`), badge styles (`number`, `checkMark`, `borderOnly`), positions, and image fitting (`previewFit`, `gridItemFit`).
 - Video & File Constraints — Enforce minimum/maximum video duration (`minVideoDuration`, `maxVideoDuration`) and file size limits (`minFileSize`, `maxFileSize`).
 - Full-Screen Preview & Details Modal — Built-in full-screen preview and asset information dialog on custom gestures (`doubleTapAction`, `longPressAction`).
 - Custom File & Document Views — Toggle between List and Grid modes (`fileViewMode`) with custom extension icon mappings (`customFileTypeIcons`).
 - Custom Bottom Send Bar & FAB Animation — Override the send action bar via `bottomSendBarBuilder` or customize floating action button animations.
-- Custom Permission Dialog — Pass `permissionDialogBuilder` to supply app-specific permission dialogs.
+- Custom Permission Dialog & Loading Widget — Pass `permissionDialogBuilder` to supply app-specific permission dialogs, and `loadingWidget` for custom progress indicators.
 - Album Filters & Header Builders — Filter unwanted albums (`albumFilter`) and pass custom header widgets (`headerBuilder`).
 - Tactile Haptic Feedback — Native feedback (`HapticFeedback.selectionClick()`, `lightImpact()`, `vibrate()`) for media selection, album toggles, and max-count limits.
 - System Back Gesture Support — Integrated `PopScope` to catch Android and iOS system back gestures and close picker sheets gracefully.
@@ -41,7 +42,7 @@ A high-performance, fully customizable, multi-mode media picker for Flutter — 
 - Custom Empty Widget — Pass `emptyWidget` to `HQPickerConfig` for custom empty state illustrations when an album has no assets.
 - Two Beautiful Picker Styles — Instagram full-screen preview + Telegram draggable bottom sheet.
 - Unified `HQPicker` API — One entry-point for all shapes: `instagram`, `telegram`, `document`, `directory`.
-- Localization — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations`.
+- Localization — All visible strings (including `permissionRequired`, `permissionDenied`, `openSettings`, etc.) are configurable via `HQPickerLocalizations` (includes `HQPickerLocalizations.ar()` Arabic preset).
 - Custom SnackBar / Toast — Provide `onSnackBar` to replace the built-in SnackBar with any toast/overlay you prefer.
 - File System Support — Native document and directory pickers via `file_selector`.
 
@@ -57,7 +58,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hq_picker: ^1.0.1
+  hq_picker: ^1.1.0
 ```
 
 Import in your Dart code:

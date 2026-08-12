@@ -38,7 +38,7 @@ class HQPickerProcessor {
         barrierDismissible: false,
         builder: (ctx) {
           dialogContext = ctx;
-          return config.loadingWidget ?? const Center(child: CircularProgressIndicator());
+          return Center(child: config.loadingWidget ?? const CircularProgressIndicator.adaptive());
         },
       );
     }

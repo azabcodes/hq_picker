@@ -90,6 +90,20 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
     }
   }
 
+  String _getEmptyText() {
+    switch (widget.widget.requestType) {
+      case HQPickerRequestType.video:
+        return widget.widget.textEmptyListVideo;
+      case HQPickerRequestType.audio:
+        return widget.widget.textEmptyListAudio;
+      case HQPickerRequestType.common:
+        return widget.widget.textEmptyListFile;
+      case HQPickerRequestType.all:
+      case HQPickerRequestType.image:
+        return widget.widget.textEmptyList;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -119,9 +133,11 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                   ? (widget.widget.config.emptyWidget ??
                         Center(
                           child: state.status == HQPickerStatus.loading
-                              ? widget.widget.loading ?? const CircularProgressIndicator.adaptive()
+                              ? widget.widget.loading ??
+                                    widget.widget.config.loadingWidget ??
+                                    const CircularProgressIndicator.adaptive()
                               : Text(
-                                  widget.widget.textEmptyList,
+                                  _getEmptyText(),
                                   style: widget.widget.config.theme.resolvedEmptyListTextStyle,
                                 ),
                         ))
@@ -180,7 +196,7 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: GridView.builder(
+                                child: CustomScrollView(
                                   controller: widget.controller,
                                   physics:
                                       widget.widget.config.scrollPhysics ??
@@ -188,41 +204,55 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                                         parent: AlwaysScrollableScrollPhysics(),
                                       ),
                                   scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
-                                  addRepaintBoundaries: true,
-                                  addAutomaticKeepAlives: true,
-                                  itemCount: state.assetsList.length + 1,
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: widget.widget.config.gridCrossAxisCount ?? 3,
-                                    crossAxisSpacing: widget.widget.config.gridCrossAxisSpacing,
-                                    mainAxisSpacing: widget.widget.config.gridMainAxisSpacing,
-                                    childAspectRatio: widget.widget.config.gridChildAspectRatio,
-                                  ),
-                                  itemBuilder: (context, index) {
-                                    if (index == 0) {
-                                      if (widget.widget.isRealCameraView) {
-                                        return HQPickerCameraPreviewWidget(
-                                          pickImageCamera: (source) =>
-                                              pickMediaCamera(context, source),
-                                        );
-                                      } else {
-                                        return HQPickerFackeCameraWidget(
-                                          pickImageCamera: (source) =>
-                                              pickMediaCamera(context, source),
-                                        );
-                                      }
-                                    } else {
-                                      AssetEntity assetEntity = state.assetsList[index - 1];
-                                      return KeyedSubtree(
-                                        key: ValueKey(assetEntity.id),
-                                        child: assetWidget(
-                                          context,
-                                          assetEntity,
-                                          widget.widget.maxCountPickMedia,
-                                          state,
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  slivers: [
+                                    SliverGrid(
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: widget.widget.config.gridCrossAxisCount ?? 3,
+                                        crossAxisSpacing: widget.widget.config.gridCrossAxisSpacing,
+                                        mainAxisSpacing: widget.widget.config.gridMainAxisSpacing,
+                                        childAspectRatio: widget.widget.config.gridChildAspectRatio,
+                                      ),
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, index) {
+                                          if (index == 0) {
+                                            if (widget.widget.isRealCameraView) {
+                                              return HQPickerCameraPreviewWidget(
+                                                pickImageCamera: (source) =>
+                                                    pickMediaCamera(context, source),
+                                              );
+                                            } else {
+                                              return HQPickerFackeCameraWidget(
+                                                pickImageCamera: (source) =>
+                                                    pickMediaCamera(context, source),
+                                              );
+                                            }
+                                          } else if (index <= state.assetsList.length) {
+                                            AssetEntity assetEntity = state.assetsList[index - 1];
+                                            return KeyedSubtree(
+                                              key: ValueKey(assetEntity.id),
+                                              child: assetWidget(
+                                                context,
+                                                assetEntity,
+                                                widget.widget.maxCountPickMedia,
+                                                state,
+                                              ),
+                                            );
+                                          } else {
+                                            return Center(
+                                              child: widget.widget.loading ??
+                                                  widget.widget.config.loadingWidget ??
+                                                  const CircularProgressIndicator.adaptive(),
+                                            );
+                                          }
+                                        },
+                                        childCount: state.assetsList.length +
+                                            1 +
+                                            (state.isLoadingMore ? 1 : 0),
+                                        addRepaintBoundaries: true,
+                                        addAutomaticKeepAlives: true,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -397,9 +427,9 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                   child: AssetEntityImage(
                     assetEntity,
                     isOriginal: false,
-                    thumbnailSize: const ThumbnailSize.square(200),
+                    thumbnailSize: ThumbnailSize.square(config.thumbnailSize),
                     thumbnailFormat: ThumbnailFormat.jpeg,
-                    fit: BoxFit.cover,
+                    fit: config.gridItemFit,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
