@@ -1,3 +1,9 @@
+## 1.1.1
+
+### Storage & Memory Optimization
+- **Automatic Temp File Cache Purging**: Added `PhotoManager.clearFileCache()` inside `HQPickerProcessor.processAssets()` to automatically wipe obsolete temporary media file copies before processing new selections. Prevents temporary video files (500MB+) from accumulating indefinitely in app cache storage.
+- **Explicit Cache Purge API**: Added `HQPicker.clearCache()` static API method allowing applications to manually purge picker media file caches on-demand (e.g. when clearing file selections).
+
 ## 1.1.0
 
 ### Universal Native iOS Design & Aesthetic

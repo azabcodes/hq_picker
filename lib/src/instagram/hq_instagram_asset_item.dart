@@ -122,8 +122,7 @@ class HQAssetItem extends StatelessWidget {
             onLongPress: () => executeAction(config.longPressAction),
         child: ClipRRect(
           borderRadius: borderRadius,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          child: Container(
             decoration: BoxDecoration(
               borderRadius: borderRadius,
               border: isSelected && config.selectionStyle == HQPickerSelectionStyle.borderOnly
@@ -142,9 +141,7 @@ class HQAssetItem extends StatelessWidget {
                     fit: config.gridItemFit,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.white10,
-                      );
+                      return const ColoredBox(color: Colors.white10);
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Center(

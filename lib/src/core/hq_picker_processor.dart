@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../hq_picker.dart';
 import 'tools/media_editor.dart';
@@ -28,6 +29,12 @@ class HQPickerProcessor {
     HQPickerConfig config,
   ) async {
     if (assets.isEmpty) return [];
+
+    // Safely clear old temporary cached files from previous pick sessions
+    // so large media files (500MB+) do not accumulate indefinitely in app cache storage.
+    try {
+      await PhotoManager.clearFileCache();
+    } catch (_) {}
 
     final bool needsProcessing = config.compressImage;
     BuildContext? dialogContext;

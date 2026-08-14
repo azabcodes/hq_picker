@@ -509,7 +509,7 @@ class _HQInstagramPickerState extends State<HQInstagramPicker> with AutomaticKee
                                       const BouncingScrollPhysics(
                                         parent: AlwaysScrollableScrollPhysics(),
                                       ),
-                                  scrollCacheExtent: const ScrollCacheExtent.pixels(1500.0),
+                                  scrollCacheExtent: const ScrollCacheExtent.pixels(600.0),
                                   slivers: [
                                     SliverGrid(
                                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

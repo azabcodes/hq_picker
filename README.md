@@ -38,6 +38,7 @@ A high-performance, fully customizable, multi-mode media picker for Flutter — 
 - Album Filters & Header Builders — Filter unwanted albums (`albumFilter`) and pass custom header widgets (`headerBuilder`).
 - Tactile Haptic Feedback — Native feedback (`HapticFeedback.selectionClick()`, `lightImpact()`, `vibrate()`) for media selection, album toggles, and max-count limits.
 - System Back Gesture Support — Integrated `PopScope` to catch Android and iOS system back gestures and close picker sheets gracefully.
+- **Automated Temp File Cache Management**: Integrated automatic cache purging (`PhotoManager.clearFileCache()`) and static `HQPicker.clearCache()` helper method to eliminate temporary file accumulation and prevent app storage bloat when selecting large videos (500MB+).
 - Auto Memory Cleanup — Automatically clears temporary thumbnail caches (`PhotoManager.clearFileCache()`) on picker disposal.
 - Custom Empty Widget — Pass `emptyWidget` to `HQPickerConfig` for custom empty state illustrations when an album has no assets.
 - Two Beautiful Picker Styles — Instagram full-screen preview + Telegram draggable bottom sheet.

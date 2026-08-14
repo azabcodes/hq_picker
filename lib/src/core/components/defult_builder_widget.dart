@@ -413,8 +413,7 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
         },
         child: ClipRRect(
           borderRadius: borderRadius,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          child: Container(
             decoration: BoxDecoration(
               borderRadius: borderRadius,
               border: isSelected && config.selectionStyle == HQPickerSelectionStyle.borderOnly
@@ -432,9 +431,7 @@ class _HQPickerDefultBuilderWidgetState extends State<HQPickerDefultBuilderWidge
                     fit: config.gridItemFit,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.white10,
-                      );
+                      return const ColoredBox(color: Colors.white10);
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Center(
